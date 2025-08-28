@@ -99,17 +99,17 @@ resource "local_file" "nginx_file" {
   depends_on = [resource.null_resource.clone_repo]
 
 }
-data "template_file" "migration_version" {
-  template = file(var.migration_version_template_path)
+# data "template_file" "migration_version" {
+#   template = file(var.migration_version_template_path)
 
-  vars = {
-    migration_version = var.migration_version
-  }
-}
+#   vars = {
+#     migration_version = var.migration_version
+#   }
+# }
 
-resource "local_file" "migration_version_file" {
-  count      = var.migration_version_file != null ? 1 : 0
-  content    = data.template_file.migration_version.rendered
-  filename   = var.migration_version_file
-  depends_on = [resource.null_resource.clone_repo]
-}
+# resource "local_file" "migration_version_file" {
+#   count      = var.migration_version_file != null ? 1 : 0
+#   content    = data.template_file.migration_version.rendered
+#   filename   = var.migration_version_file
+#   depends_on = [resource.null_resource.clone_repo]
+# }
