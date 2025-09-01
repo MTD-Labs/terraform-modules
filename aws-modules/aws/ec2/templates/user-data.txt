@@ -1,0 +1,41 @@
+#!/bin/bash
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update && \
+apt-get upgrade -y -o Dpkg::Options::="--force-confnew"
+
+apt-get install -y \
+  cloud-utils \
+  apt-transport-https \
+  ca-certificates \
+  software-properties-common \
+  build-essential \
+  unzip \
+  curl \
+  wget \
+  gnupg \
+  net-tools \
+  socat \
+  jq \
+  expect \
+  awscli
+
+# install docker
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+add-apt-repository -y \
+   "deb [arch=arm64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+
+apt-get update
+apt-get install -y docker-ce
+usermod -aG docker ubuntu
+
+ufw disable # use security groups
+apt-get remove ec2-instance-connect # use direct ssh keys management
+
+rm -rf /var/lib/apt/lists/*
+
+echo "${ssh_authorized_keys}" | base64 -d >> /home/ubuntu/.ssh/authorized_keys
+

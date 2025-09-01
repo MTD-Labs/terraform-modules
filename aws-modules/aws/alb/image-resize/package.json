@@ -1,0 +1,23 @@
+{
+    "name": "image-resize",
+    "version": "1.0.0",
+    "description": "  Resize pictures on the fly according to dimensions passed by the query parameter",
+    "main": "app.js",
+    "repository": "https://github.com/awslabs/aws-cloudfront-extensions/tree/main/edge/nodejs/resize-picture",
+    "author": "AWS",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "aws-sdk": "^2.889.0",
+        "axios": "^1.0.0",
+        "salted-md5": "^4.0.5",
+        "sharp": "^0.32.6"
+    },
+    "scripts": {
+        "test": "nyc --check-coverage --lines 60 --reporter=text mocha tests/unit/"
+    },
+    "devDependencies": {
+        "chai": "^4.2.0",
+        "mocha": "^10.0.0",
+        "nyc": "^15.1.0"
+    }
+}

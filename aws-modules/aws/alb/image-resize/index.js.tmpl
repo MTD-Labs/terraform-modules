@@ -1,0 +1,235 @@
+'use strict';
+
+const AWS = require('aws-sdk');
+const S3 = new AWS.S3({
+  signatureVersion: 'v4',
+});
+const Sharp = require('sharp');
+const querystring = require('querystring');
+const crypto = require('crypto');
+const ssm = new AWS.SSM();
+// set your S3 bucket name here
+const BUCKET = ${lambda_bucket_name};
+const SSM_SECRET_KEY = ${ssm_secret_key};
+const GET_DOCUMENT_DATA_API_URL = ${document_data_api_url};
+const HTML_TO_PDF_URL = ${html_to_pdf_url};
+const HTML_TO_DOCX_URL = ${html_to_docx_url};
+
+const secret = getSecretKey();
+
+exports.handler = async (event, context, callback) => {
+  const request  = event.Records[0].cf.request;
+  const response = event.Records[0].cf.response;
+  const path     = request.uri;
+
+  if (response.status != 404) {
+    return response;
+  }
+
+  if (!secret) {
+    response.status = 403;
+    response.body   = 'Secret key not found';
+
+    return response;
+  }
+
+  const options = querystring.parse(request.querystring);
+
+  if (isDocumentPath(path)) {
+    let contentType = 'application/pdf';
+    const params = getDocumentParams(path);
+    const document = (await S3.getObject({
+      Bucket: BUCKET,
+      Key: params.pathToDocumentFile,
+    }).promise())?.Body;
+
+    if (!document) {
+      const response = await fetch(GET_DOCUMENT_DATA_API_URL + '/' + params.documentId);
+      const {font, html} = await response.json();
+
+      const formData = new FormData();
+      formData.append('files', new File([new Blob([html])], 'index.html'), 'index.html');
+      formData.append('width', '8.27');
+      formData.append('height', '11.7');
+      formData.append('skipNetworkIdleEvent', true);
+
+      const serviceResponse = await fetch(HTML_TO_PDF_URL + '/forms/chromium/convert/html', {
+        method: 'post',
+        body: formData
+      });
+
+      const document = await serviceResponse.arrayBuffer();
+
+      await S3.putObject({
+        Body: document,
+        Bucket: BUCKET,
+        ContentType: 'application/pdf', // application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        CacheControl: 'max-age=31536000',
+        Key: params.pathToDocumentFile,
+        StorageClass: 'STANDARD',
+      })
+        .promise()
+
+    }
+
+    if (params.isScreenshot) {
+      const buffer = await Sharp(document, { dpi: 150, pages: 1, page: params.page })
+        .resize(params.width, params.height, { fit: params.method })
+        .toFormat('webp', { quality: params.quality })
+        .toBuffer();
+
+      await S3.putObject({
+        Body: buffer,
+        Bucket: BUCKET,
+        ContentType: 'image/webp',
+        CacheControl: 'max-age=31536000',
+        Key: path,
+        StorageClass: 'STANDARD',
+      })
+        .promise()
+
+      contentType = 'image/webp';
+    }
+
+    response.status = 200;
+    response.body = buffer.toString('base64');
+    response.bodyEncoding = 'base64';
+    response.headers['content-type'] = [{ key: 'Content-Type', value: contentType }];
+  } else if (isImagePath(path)) {
+    const { width, height, method, quality, originalKey, finalKey } = getImageParams(path)
+
+    // if (!isSignatureSame(options.signature, generateSignature(width, height, quality, secret))) {
+    //   response.status = 403;
+    //   response.body   = 'Signature verification failed';
+    //
+    //   return response;
+    // }
+
+    const object = await S3.getObject({
+      Bucket: BUCKET,
+      Key: originalKey,
+    }).promise()
+
+    const buffer = await Sharp(object.Body)
+      .resize(width, height, { fit: method })
+      .toFormat('webp', { quality })
+      .toBuffer();
+
+    await S3.putObject({
+      Body: buffer,
+      Bucket: BUCKET,
+      ContentType: 'image/webp',
+      CacheControl: 'max-age=31536000',
+      Key: finalKey,
+      StorageClass: 'STANDARD',
+    })
+      .promise()
+
+    response.status = 200;
+    response.body = buffer.toString('base64');
+    response.bodyEncoding = 'base64';
+    response.headers['content-type'] = [{ key: 'Content-Type', value: 'image/webp' }];
+  } else {
+    return response;
+  }
+
+  return response;
+}
+
+
+/**
+ *
+ * @param {string}  path
+ * @returns {boolean}
+ */
+function isImagePath(path) {
+  return !isDocumentPath(path)
+}
+
+/**
+ *
+ * @param {string}  path
+ * @returns {boolean}
+ */
+function isDocumentPath(path) {
+  return path.startsWith('/documents');
+}
+
+/**
+ * @param {string} path
+ * @example /documents/{id}/name-v4.pdf
+ * @example /documents/{id}/name-v4-p0-300x300-inside-ww.webp
+ * @return {{type: string, folderName: string, fileName: string, version: string, width?: string, height?: string, quality?: string, method?: string, watermark?: string, ext: string, page?: string, isDocument: boolean, isScreenshot: boolean, pathToDocumentFile: string, documentId: string}}
+ */
+function getDocumentParams(path) {
+  // remove the first character / to get S3 key
+  const key = path.substring(1).replace(/\?.*/, '');
+
+  const { groups } = key.match(/(?<type>.*)\/(?<folderName>.*)\/(?<fileName>.*)-(?<version>v\d+)-p(?<page>\d+)-(?<width>\d+)x(?<height>\d+)-(?<quality>\d+)-(?<method>.*)-(?<watermark>ww|nw)?\.(?<ext>.*)/);
+  const isDocument = groups.ext === 'pdf' || groups.ext === 'docx';
+  const isScreenshot = !isDocument;
+
+  return {
+    ...groups,
+    documentId: groups.folderName,
+    isDocument,
+    isScreenshot,
+    pathToDocumentFile: `$${groups.type}/$${groups.folderName}/$${groups.fileName}-$${groups.version}.$${isScreenshot ? "pdf" : groups.ext}`,
+  }
+}
+
+function getImageParams(path) {
+  // remove the first character to get S3 key, Eg. images/100x100/demo.png
+  let key = path.substring(1);
+  // parse the prefix, width, height and image name
+  // Eg: URI = https://www.amazon.com/images/100x100/demo.png
+  // S3 originalKey = images/demo.png
+  // S3 key = images/100x100/demo.png
+  const match         = key.match(/(.*)\/(.*)\/(.*)-(\d+)x(\d+)-(.*)-(.*)\.(.*)/);
+  const prefix        = match[1];
+  const imageBaseName = match[2];
+  const width         = parseInt(match[4], 10);
+  const height        = parseInt(match[5], 10);
+  const quality       = parseInt(match[6], 10);
+  const method        = match[7];
+  const imageFormat   = match[8].toLowerCase().replace(/\?.*/, '');
+  const imageName     = imageBaseName + '.' + imageFormat;
+  const originalKey   = prefix + '/' + imageBaseName + '/' + imageName;
+  const finalName     = imageBaseName + '-' + width + 'x' + height + '-' + quality + '-' + method;
+  const finalKey      = prefix + '/' + imageBaseName + '/' + finalName + '.' + imageFormat;
+
+  return { width, height, method, quality, finalName, finalKey, originalKey }
+}
+
+async function getSecretKey() {
+  try {
+    const { Parameter } = await ssm.getParameter({ Name: SSM_SECRET_KEY, WithDecryption: true }).promise();
+
+    return Parameter.Value;
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function generateSignatureForDocument(name, version, secretKey) {
+  const signatureString = `$${name}-$${version}-$${secretKey}`
+
+  return crypto.createHash('sha256').update(signatureString).digest('hex')
+}
+
+function generateSignature(width, height, quality, secretKey) {
+  const resizeParams    = `$${width}x$${height}-$${quality}`
+  const signatureString = `$${resizeParams}$${secretKey}`
+
+  return crypto.createHash('sha256').update(signatureString).digest('hex')
+}
+
+
+/**
+ * @param {string} requestSignature
+ * @param {string} signatureString
+ * @returns {boolean}
+ */
+function isSignatureSame(requestSignature, signatureString) {
+  return requestSignature === crypto.createHash('sha256').update(signatureString).digest('hex')
+}
