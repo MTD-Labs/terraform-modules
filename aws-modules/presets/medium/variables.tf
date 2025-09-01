@@ -609,3 +609,133 @@ variable "efs_provisioned_throughput" {
   type        = number
   default     = null
 }
+
+# Amazon MQ variables
+variable "mq_enabled" {
+  description = "Whether to create Amazon MQ resources"
+  type        = bool
+  default     = false
+}
+
+variable "mq_engine_type" {
+  description = "Type of broker engine (ACTIVEMQ or RABBITMQ)"
+  type        = string
+  default     = "ACTIVEMQ"
+}
+
+variable "mq_engine_version" {
+  description = "The version of the broker engine"
+  type        = string
+  default     = "5.17.6"
+}
+
+variable "mq_instance_type" {
+  description = "The broker's instance type"
+  type        = string
+  default     = "mq.t3.micro"
+}
+
+variable "mq_deployment_mode" {
+  description = "The deployment mode of the broker (SINGLE_INSTANCE, ACTIVE_STANDBY_MULTI_AZ, CLUSTER_MULTI_AZ)"
+  type        = string
+  default     = "SINGLE_INSTANCE"
+}
+
+variable "mq_auto_minor_version_upgrade" {
+  description = "Enables automatic upgrades to new minor versions for brokers"
+  type        = bool
+  default     = false
+}
+
+variable "mq_authentication_strategy" {
+  description = "Authentication strategy for the broker (SIMPLE or LDAP)"
+  type        = string
+  default     = "SIMPLE"
+}
+
+variable "mq_admin_username" {
+  description = "Admin username for the broker"
+  type        = string
+  default     = "admin"
+}
+
+variable "mq_users" {
+  description = "Map of additional users and their configuration"
+  type = map(object({
+    groups         = list(string)
+    console_access = optional(bool, false)
+  }))
+  default = {}
+}
+
+variable "mq_enable_general_logging" {
+  description = "Enables general logging via CloudWatch"
+  type        = bool
+  default     = false
+}
+
+variable "mq_enable_audit_logging" {
+  description = "Enables audit logging via CloudWatch"
+  type        = bool
+  default     = false
+}
+
+variable "mq_maintenance_day_of_week" {
+  description = "The day of the week for maintenance window"
+  type        = string
+  default     = "SUNDAY"
+}
+
+variable "mq_maintenance_time_of_day" {
+  description = "The time of day for maintenance window (format: HH:MM)"
+  type        = string
+  default     = "03:00"
+}
+
+variable "mq_maintenance_time_zone" {
+  description = "The time zone for maintenance window"
+  type        = string
+  default     = "UTC"
+}
+
+variable "mq_kms_ssm_key_arn" {
+  type        = string
+  description = "ARN of the AWS KMS key used for SSM encryption"
+  default     = "alias/aws/ssm"
+}
+
+variable "mq_kms_mq_key_arn" {
+  type        = string
+  description = "ARN of the AWS KMS key used for MQ encryption"
+  default     = null
+}
+
+variable "mq_additional_security_group_ids" {
+  description = "Additional security group IDs to allow access to MQ"
+  type        = list(string)
+  default     = []
+}
+
+variable "mq_allow_vpc_cidr_block" {
+  description = "Allow full VPC CIDR block for access to MQ"
+  type        = bool
+  default     = false
+}
+
+variable "mq_allow_vpc_private_cidr_blocks" {
+  description = "Allow VPC private CIDR blocks for access to MQ"
+  type        = bool
+  default     = true
+}
+
+variable "mq_extra_allowed_cidr_blocks" {
+  description = "Extra allowed CIDR blocks for MQ access"
+  type        = string
+  default     = "10.0.0.0/8"
+}
+
+variable "mq_ecs_read_only_access" {
+  description = "Whether to grant ECS tasks read-only access to MQ (instead of full access)"
+  type        = bool
+  default     = false
+}

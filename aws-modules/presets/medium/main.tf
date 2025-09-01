@@ -298,3 +298,117 @@ module "elasticsearch" {
   ebs_volume_size       = var.elasticsearch_ebs_volume_size
   tags                  = var.tags
 }
+
+
+# Amazon MQ integration
+locals {
+  mq_envs = var.mq_enabled ? {
+    BROKER_URL      = module.mq[0].broker_endpoints.stomp_ssl
+    BROKER_USERNAME = var.mq_admin_username
+    BROKER_TYPE     = "activemq"
+  } : {}
+  
+  mq_secrets = var.mq_enabled ? {
+    BROKER_PASSWORD = module.mq[0].admin_password_ssm_arn
+  } : {}
+
+  # Update final_ecs_containers to include MQ envs and secrets
+  final_ecs_containers = [
+    for container in var.ecs_containers : {
+      name                 = container.name
+      image                = container.image
+      command              = container.command
+      cpu                  = container.cpu
+      memory               = container.memory
+      min_count            = container.min_count
+      max_count            = container.max_count
+      target_cpu_threshold = container.target_cpu_threshold
+      target_mem_threshold = container.target_mem_threshold
+      path                 = container.path
+      priority             = container.priority
+      port                 = container.port
+      service_domain       = container.service_domain
+      envs                 = merge(container.envs, local.db_envs, local.cache_envs, local.mq_envs)
+      secrets              = merge(container.secrets, local.db_secrets, local.cache_secrets, local.mq_secrets)
+      health_check         = container.health_check
+      volumes              = container.volumes
+    }
+  ]
+}
+
+module "mq" {
+  count  = var.mq_enabled == true ? 1 : 0
+  source = "../../aws/mq"
+
+  region = var.region
+  env    = var.env
+  name   = var.name
+  tags   = var.tags
+
+  vpc_id                  = module.vpc.vpc_id
+  vpc_subnets             = module.vpc.private_subnets
+  vpc_cidr_block          = module.vpc.vpc_cidr_block
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+
+  engine_type                = var.mq_engine_type
+  engine_version             = var.mq_engine_version
+  instance_type              = var.mq_instance_type
+  deployment_mode            = var.mq_deployment_mode
+  auto_minor_version_upgrade = var.mq_auto_minor_version_upgrade
+  authentication_strategy    = var.mq_authentication_strategy
+  admin_username             = var.mq_admin_username
+  users                      = var.mq_users
+
+  enable_general_logging = var.mq_enable_general_logging
+  enable_audit_logging   = var.mq_enable_audit_logging
+
+  maintenance_day_of_week = var.mq_maintenance_day_of_week
+  maintenance_time_of_day = var.mq_maintenance_time_of_day
+  maintenance_time_zone   = var.mq_maintenance_time_zone
+
+  kms_ssm_key_arn = var.mq_kms_ssm_key_arn
+  kms_mq_key_arn  = var.mq_kms_mq_key_arn
+
+  bastion_security_group_id      = module.ec2[0].security_group_id
+  additional_security_group_ids  = var.mq_additional_security_group_ids
+  allow_vpc_cidr_block           = var.mq_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks  = var.mq_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks      = var.mq_extra_allowed_cidr_blocks
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
+  count      = var.mq_enabled == true ? 1 : 0
+  role       = module.ecs[0].ecs_task_exec_role_name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonMQFullAccess"
+}
+
+# Optional: IAM policy for specific MQ access if needed
+resource "aws_iam_policy" "mq_read_only" {
+  count = var.mq_enabled == true && var.mq_ecs_read_only_access ? 1 : 0
+
+  name        = "${var.env}-${var.name}-mq-read-only"
+  description = "Read-only access to Amazon MQ for ${var.env} environment"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "mq:DescribeBroker",
+          "mq:ListBrokers",
+          "ssm:GetParameter",
+          "ssm:GetParameters"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_mq_read_only" {
+  count = var.mq_enabled == true && var.mq_ecs_read_only_access ? 1 : 0
+
+  role       = module.ecs[0].ecs_task_exec_role_name
+  policy_arn = aws_iam_policy.mq_read_only[0].arn
+}
