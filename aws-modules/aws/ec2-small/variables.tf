@@ -151,7 +151,7 @@ variable "services_list" {
   default = ["service1", "service2"]
 }
 
-variable "ecr_user_id" {
+variable "ami_id" {
   type    = string
   default = "ami-03e40101f6ac56b76"
 }
