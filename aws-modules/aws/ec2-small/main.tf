@@ -113,8 +113,9 @@ data "aws_ssm_parameter" "ssh_authorized_keys" {
   name = var.ssh_authorized_keys_secret
 }
 
-data "aws_secretsmanager_secret_version" "env_secret" {
-  secret_id = "${var.env}-${var.name}-env"
+data "aws_secretsmanager_secret_version" "services_env" {
+  for_each  = toset(var.services_list)
+  secret_id = "${var.env}-${each.key}-env"
 }
 
 data "aws_secretsmanager_secret_version" "cloudflare_token" {
@@ -254,13 +255,33 @@ resource "null_resource" "wait_for_cloud_init" {
   depends_on = [aws_instance.bastion]
 }
 
-resource "null_resource" "dev_provisioning" {
-  count      = var.env == "dev" ? 1 : 0
+resource "null_resource" "service_env_files" {
+  for_each   = data.aws_secretsmanager_secret_version.services_env
   depends_on = [null_resource.wait_for_cloud_init]
+
+  triggers = {
+    version_id = each.value.version_id
+  }
+
+  provisioner "file" {
+    content     = each.value.secret_string
+    destination = "/app/.env.${each.key}"
+
+    connection {
+      type        = "ssh"
+      host        = aws_instance.bastion.public_ip
+      user        = "ubuntu"
+      private_key = file(var.private_key_path)
+    }
+  }
+}
+
+resource "null_resource" "dev_provisioning" {
+  count      = var.env == "stage" ? 1 : 0
+  depends_on = [null_resource.wait_for_cloud_init, null_resource.service_env_files]
   triggers = {
     docker_compose_hash = filesha256("${path.root}/templates/docker-compose.yml")
     nginx_conf_hash     = filesha256("${path.root}/templates/nginx.conf")
-    secret_version_id   = data.aws_secretsmanager_secret_version.env_secret.version_id
     cloudflare_token    = data.aws_secretsmanager_secret_version.cloudflare_token.version_id
   }
 
@@ -287,19 +308,6 @@ resource "null_resource" "dev_provisioning" {
       private_key = file(var.private_key_path)
     }
   }
-
-  provisioner "file" {
-    content     = data.aws_secretsmanager_secret_version.env_secret.secret_string
-    destination = "/app/.env"
-
-    connection {
-      type        = "ssh"
-      host        = aws_instance.bastion.public_ip
-      user        = "ubuntu"
-      private_key = file(var.private_key_path)
-    }
-  }
-
   provisioner "file" {
     content     = data.aws_secretsmanager_secret_version.cloudflare_token.secret_string
     destination = "/app/cloudflare.ini"

@@ -100,6 +100,7 @@ module "ec2" {
   domain_name                = var.domain_name
   ubuntu_ami_name_pattern    = var.ubuntu_ami_name_pattern
   instance_arch              = var.instance_arch
+  services_list              = var.services_list
 }
 
 module "s3" {

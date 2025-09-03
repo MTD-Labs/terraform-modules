@@ -489,3 +489,8 @@ variable "instance_arch" {
   type        = string
   default     = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
 }
+
+variable "services_list" {
+  type    = list(string)
+  default = ["service1", "service2"]
+}

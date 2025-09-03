@@ -146,3 +146,7 @@ variable "instance_arch" {
   default     = "arm64"
 }
 
+variable "services_list" {
+  type    = list(string)
+  default = ["service1", "service2"]
+}
