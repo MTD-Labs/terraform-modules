@@ -671,13 +671,13 @@ variable "mq_users" {
 variable "mq_enable_general_logging" {
   description = "Enables general logging via CloudWatch"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "mq_enable_audit_logging" {
   description = "Enables audit logging via CloudWatch"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "mq_maintenance_day_of_week" {
