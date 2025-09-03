@@ -137,7 +137,7 @@ variable "domain_name" {
 variable "ubuntu_ami_name_pattern" {
   description = "The name pattern for Ubuntu AMI"
   type        = string
-  default     = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-arm64-server-*"
+  default     = "ubuntu/images/hvm-ssd/ubuntu-noble-24.04-arm64-server-*"
 }
 
 variable "instance_arch" {
