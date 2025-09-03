@@ -150,3 +150,8 @@ variable "services_list" {
   type    = list(string)
   default = ["service1", "service2"]
 }
+
+variable "ecr_user_id" {
+  type    = string
+  default = "ami-03e40101f6ac56b76"
+}

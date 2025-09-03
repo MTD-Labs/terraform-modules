@@ -10,32 +10,6 @@ locals {
   name = "${var.env}-${var.name}"
 }
 
-data "aws_ami" "ami" {
-  owners      = var.ami_owners
-  most_recent = true
-
-  filter {
-    name = "name"
-    # For Ubuntu 22.04 (Jammy)
-    values = [var.ubuntu_ami_name_pattern]
-  }
-
-  filter {
-    name   = "architecture"
-    values = [var.instance_arch]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-}
-
 data "aws_iam_policy_document" "secrets_read_policy_doc" {
   statement {
     effect = "Allow"
@@ -178,7 +152,7 @@ resource "aws_volume_attachment" "bastion_additional_disk" {
 }
 
 resource "aws_instance" "bastion" {
-  ami                  = data.aws_ami.ami.id
+  ami                  = var.ami_id
   ebs_optimized        = true
   instance_type        = var.instance_type
   key_name             = var.key_name
