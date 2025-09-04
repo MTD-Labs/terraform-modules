@@ -28,7 +28,7 @@ if [ "$VOLUME_ID" != "None" ]; then
     echo "Mounting to /mnt/data..."
     mkdir -p /mnt/data
     mount $DEVICE /mnt/data
-    mkdir -p /mnt/data/postgres /mnt/data/redis
+    mkdir -p /mnt/data/postgres /mnt/data/redis /mnt/data/mqbroker /app/grafana-provisioning/datasources
 
     if ! grep -q '/mnt/data' /etc/fstab; then
       UUID=$(blkid -s UUID -o value $DEVICE)

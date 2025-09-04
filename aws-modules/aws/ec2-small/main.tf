@@ -257,6 +257,60 @@ resource "null_resource" "dev_provisioning" {
     docker_compose_hash = filesha256("${path.root}/templates/docker-compose.yml")
     nginx_conf_hash     = filesha256("${path.root}/templates/nginx.conf")
     cloudflare_token    = data.aws_secretsmanager_secret_version.cloudflare_token.version_id
+
+    nginx_dockerfile    = filesha256("${path.root}/templates/Dockerfile.nginx")
+    loki_config = filesha256("${path.root}/templates/lokig-config.yml")
+    promtail_config = filesha256("${path.root}/templates/promtail-config.yml")
+    grafana_loki_source = filesha256("${path.root}/templates/grafana-provisioning/datasources/loki.yml")
+    
+  }
+
+  provisioner "file" {
+    source      = "${path.root}/templates/Dockerfile.nginx"
+    destination = "/app/Dockerfile.nginx"
+
+    connection {
+      type        = "ssh"
+      host        = aws_instance.bastion.public_ip
+      user        = "ubuntu"
+      private_key = file(var.private_key_path)
+    }
+  }
+
+  provisioner "file" {
+    source      = "${path.root}/templates/lokig-config.yml"
+    destination = "/app/lokig-config.yml"
+
+    connection {
+      type        = "ssh"
+      host        = aws_instance.bastion.public_ip
+      user        = "ubuntu"
+      private_key = file(var.private_key_path)
+    }
+  }
+
+  provisioner "file" {
+    source      = "${path.root}/templates/promtail-config.yml"
+    destination = "/app/promtail-config.yml"
+
+    connection {
+      type        = "ssh"
+      host        = aws_instance.bastion.public_ip
+      user        = "ubuntu"
+      private_key = file(var.private_key_path)
+    }
+  }
+
+  provisioner "file" {
+    source      = "${path.root}/templates/grafana-provisioning/datasources/loki.yml"
+    destination = "/app/grafana-provisioning/datasources/loki.yml"
+
+    connection {
+      type        = "ssh"
+      host        = aws_instance.bastion.public_ip
+      user        = "ubuntu"
+      private_key = file(var.private_key_path)
+    }
   }
 
   provisioner "file" {
