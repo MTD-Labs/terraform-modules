@@ -259,7 +259,7 @@ resource "null_resource" "dev_provisioning" {
     cloudflare_token    = data.aws_secretsmanager_secret_version.cloudflare_token.version_id
 
     nginx_dockerfile    = filesha256("${path.root}/templates/Dockerfile.nginx")
-    loki_config = filesha256("${path.root}/templates/lokig-config.yml")
+    loki_config = filesha256("${path.root}/templates/loki-config.yml")
     promtail_config = filesha256("${path.root}/templates/promtail-config.yml")
     grafana_loki_source = filesha256("${path.root}/templates/grafana-provisioning/datasources/loki.yml")
     
@@ -278,8 +278,8 @@ resource "null_resource" "dev_provisioning" {
   }
 
   provisioner "file" {
-    source      = "${path.root}/templates/lokig-config.yml"
-    destination = "/app/lokig-config.yml"
+    source      = "${path.root}/templates/loki-config.yml"
+    destination = "/app/loki-config.yml"
 
     connection {
       type        = "ssh"
