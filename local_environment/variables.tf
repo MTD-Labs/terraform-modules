@@ -140,7 +140,7 @@ variable "valid_suffixes_supervisor" {
 variable "valid_prefixes_supervisor" {
   description = "List of valid suffixes for server_host"
   type        = list(string)
-  default     = ["localhost", "host.docker.internal", "172.16.13", "172.16.12.2:9001"]
+  default     = ["host.docker.internal", "172.16.13", "172.16.12.2:9001"]
 }
 variable "envs" {
   type = map(string)
