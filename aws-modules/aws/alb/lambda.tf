@@ -1,11 +1,11 @@
-locals {
-  repository_name = split("/", var.lambda_image_url)[1]
-}
+# locals {
+#   repository_name = split("/", var.lambda_image_url)[1]
+# }
 
-data "aws_ecr_image" "latest_image" {
-  repository_name = local.repository_name
-  image_tag       = "latest"
-}
+# data "aws_ecr_image" "latest_image" {
+#   repository_name = local.repository_name
+#   image_tag       = "latest"
+# }
 
 resource "aws_lambda_function" "image_resize" {
   count = var.cdn_optimize_images && var.lambda_edge_enabled == false ? 1 : 0
