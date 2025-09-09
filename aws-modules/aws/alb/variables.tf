@@ -70,7 +70,7 @@ variable "cdn_buckets" {
 
 variable "lambda_image_url" {
   type    = string
-  default = null
+  default = ""
 }
 
 variable "lambda_memory_size" {

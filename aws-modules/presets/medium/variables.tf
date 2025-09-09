@@ -429,7 +429,7 @@ variable "cloudtrail_log_retention_days" {
 
 variable "lambda_image_url" {
   type    = string
-  default = null
+  default = ""
 }
 
 variable "lambda_region" {

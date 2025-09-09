@@ -464,7 +464,7 @@ variable "enable_public_access" {
 
 variable "lambda_image_url" {
   type    = string
-  default = null
+  default = ""
 }
 
 variable "lambda_region" {
