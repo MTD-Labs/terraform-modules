@@ -1,4 +1,5 @@
 locals {
+  # ---------- Cache (Redis) ----------
   cache_envs = {
     CACHE_DRIVER     = "redis"
     SESSION_DRIVER   = "redis"
@@ -8,6 +9,8 @@ locals {
   cache_secrets = {
     REDIS_PASSWORD = module.redis[0].auth_token_ssm_arn
   }
+
+  # ---------- Database (Postgres) ----------
   db_envs = {
     DB_CONNECTION = "pgsql"
     DB_HOST       = var.postgres_rds_type == "rds" ? module.postgres[0].rds_instance_address[0] : module.postgres[0].cluster_endpoint[0]
@@ -19,7 +22,27 @@ locals {
     DB_PASSWORD = module.postgres[0].rds_instance_master_password_ssm_arn
   }
 
-  # Injecting infra-level db & cache credentials
+  # ---------- Amazon MQ (conditional) ----------
+  mq_envs = var.mq_enabled ? {
+    BROKER_URL      = module.mq[0].broker_endpoints.stomp_ssl
+    BROKER_USERNAME = var.mq_admin_username
+    BROKER_TYPE     = "activemq"
+  } : {}
+
+  mq_secrets = var.mq_enabled ? {
+    BROKER_PASSWORD = module.mq[0].admin_password_ssm_arn
+  } : {}
+
+  # ---------- Public buckets for CDN ----------
+  public_bucket_list = [
+    for bucket in var.s3_bucket_list : {
+      name        = bucket.name
+      domain_name = "${bucket.name}.s3.${var.region}.amazonaws.com"
+      path        = bucket.path
+    } if bucket.public
+  ]
+
+  # ---------- Final ECS containers (single source of truth) ----------
   final_ecs_containers = [
     for container in var.ecs_containers : {
       name                 = container.name
@@ -35,27 +58,14 @@ locals {
       priority             = container.priority
       port                 = container.port
       service_domain       = container.service_domain
-      envs                 = merge(container.envs, local.db_envs, local.cache_envs)
-      secrets              = merge(container.secrets, local.db_secrets, local.cache_secrets)
+      envs                 = merge(container.envs, local.db_envs, local.cache_envs, local.mq_envs)
+      secrets              = merge(container.secrets, local.db_secrets, local.cache_secrets, local.mq_secrets)
       health_check         = container.health_check
       volumes              = container.volumes
     }
   ]
-
-  # # Forming a list of buckets for public access via CloudFront
-  # public_bucket_keys     = [for i, bucket in var.s3_bucket_list : i if bucket.public == true]
-  # public_bucket_keys_map = tomap({ for k, v in local.public_bucket_keys : v => k })
-  # public_bucket_list     = [for key in local.public_bucket_keys_map : lookup(var.s3_bucket_list, key)]
-
-  public_bucket_list = [
-    for bucket in var.s3_bucket_list : {
-      name        = bucket.name
-      domain_name = "${bucket.name}.s3.${var.region}.amazonaws.com"
-      path        = bucket.path
-    } if bucket.public
-  ]
-
 }
+
 
 module "vpc" {
   source = "../../aws/vpc"
