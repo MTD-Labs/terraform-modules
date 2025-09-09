@@ -63,7 +63,7 @@ resource "aws_security_group" "mq_security_group" {
     from_port   = 5671
     to_port     = 5671
     protocol    = "tcp"
-    cidr_blocks = var.allowed_cidr_blocks
+    cidr_blocks = "172.31.0.0/16"
   }
 
   # Web console via 443 on Amazon MQ for RabbitMQ
@@ -71,7 +71,7 @@ resource "aws_security_group" "mq_security_group" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = var.allowed_cidr_blocks
+    cidr_blocks = "172.31.0.0/16"
   }
 
   egress {
