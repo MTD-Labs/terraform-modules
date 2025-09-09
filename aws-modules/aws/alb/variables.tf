@@ -49,7 +49,7 @@ variable "cdn_domain_name" {
 
 variable "cdn_optimize_images" {
   type    = bool
-  default = true
+  default = false
 }
 
 # variable "cdn_bucket_names" {

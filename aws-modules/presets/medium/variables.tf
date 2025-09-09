@@ -398,7 +398,7 @@ variable "cdn_enabled" {
 
 variable "cdn_optimize_images" {
   type    = bool
-  default = true
+  default = false
 }
 
 ### S3 ###
@@ -583,7 +583,7 @@ variable "instance_arch" {
 }
 variable "lambda_edge_enabled" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "efs_enabled" {
