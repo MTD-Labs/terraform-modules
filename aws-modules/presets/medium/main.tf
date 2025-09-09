@@ -338,7 +338,7 @@ locals {
 
 module "mq" {
   count  = var.mq_enabled == true ? 1 : 0
-  source = "../../aws/mq"
+  source = "../../aws/mq-broker"
 
   region = var.region
   env    = var.env
