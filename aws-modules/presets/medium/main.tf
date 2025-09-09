@@ -309,43 +309,6 @@ module "elasticsearch" {
   tags                  = var.tags
 }
 
-
-# Amazon MQ integration
-locals {
-  mq_envs = var.mq_enabled ? {
-    BROKER_URL      = module.mq[0].broker_endpoints.stomp_ssl
-    BROKER_USERNAME = var.mq_admin_username
-    BROKER_TYPE     = "activemq"
-  } : {}
-  
-  mq_secrets = var.mq_enabled ? {
-    BROKER_PASSWORD = module.mq[0].admin_password_ssm_arn
-  } : {}
-
-  # Update final_ecs_containers to include MQ envs and secrets
-  final_ecs_containers = [
-    for container in var.ecs_containers : {
-      name                 = container.name
-      image                = container.image
-      command              = container.command
-      cpu                  = container.cpu
-      memory               = container.memory
-      min_count            = container.min_count
-      max_count            = container.max_count
-      target_cpu_threshold = container.target_cpu_threshold
-      target_mem_threshold = container.target_mem_threshold
-      path                 = container.path
-      priority             = container.priority
-      port                 = container.port
-      service_domain       = container.service_domain
-      envs                 = merge(container.envs, local.db_envs, local.cache_envs, local.mq_envs)
-      secrets              = merge(container.secrets, local.db_secrets, local.cache_secrets, local.mq_secrets)
-      health_check         = container.health_check
-      volumes              = container.volumes
-    }
-  ]
-}
-
 module "mq" {
   count  = var.mq_enabled == true ? 1 : 0
   source = "../../aws/mq-broker"
