@@ -97,8 +97,8 @@ variable "ecs_containers" {
     max_count            = number
     target_cpu_threshold = number
     target_mem_threshold = number
-    path                 = list(string)
-    priority             = number
+    path                 = optional(list(string), [])
+    priority             = optional(number)
     port                 = number
     service_domain       = string
     envs                 = map(string)

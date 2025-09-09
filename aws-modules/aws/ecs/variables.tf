@@ -57,10 +57,10 @@ variable "containers" {
     max_count            = number
     target_cpu_threshold = number
     target_mem_threshold = number
-    path                 = list(string)
+    path                 = optional(list(string), [])
     port                 = number
     service_domain       = string
-    priority             = number
+    priority             = optional(number)
     envs                 = map(string)
     secrets              = map(string)
     health_check         = map(string)
