@@ -118,5 +118,5 @@ variable "html_to_docx_url" {
 
 variable "lambda_edge_enabled" {
   type    = bool
-  default = true
+  default = false
 }
