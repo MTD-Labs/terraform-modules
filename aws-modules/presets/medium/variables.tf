@@ -393,12 +393,12 @@ variable "redis_snapshot_window" {
 
 variable "cdn_enabled" {
   type    = bool
-  default = true
+  default = false
 }
 
 variable "cdn_optimize_images" {
   type    = bool
-  default = false
+  default = true
 }
 
 ### S3 ###
