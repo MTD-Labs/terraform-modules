@@ -28,12 +28,6 @@ variable "tags" {
 # ----------------------------
 # Monitoring & Alerting
 # ----------------------------
-variable "sns_alert_topic_arn" {
-  description = "SNS topic ARN for CloudWatch alarms. Leave empty to disable alerting."
-  type        = string
-  default     = ""
-}
-
 variable "enable_detailed_monitoring" {
   description = "Enable detailed CloudWatch monitoring for all resources."
   type        = bool

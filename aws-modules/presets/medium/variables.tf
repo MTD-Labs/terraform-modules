@@ -740,15 +740,9 @@ variable "mq_ecs_read_only_access" {
   default     = false
 }
 
-variable "sns_alert_topic_arn" {
-  description = "SNS Topic for webhook alerts"
-  type        = string
-  default     = ""
-}
-
 
 variable "webhook_path_prefix" {
-  description = "SNS Topic for webhook alerts"
+  description = "WEbhook Path "
   type        = string
   default     = ""
 }
