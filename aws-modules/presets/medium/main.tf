@@ -313,6 +313,10 @@ module "webhook" {
   count  = var.webhook_enabled == true ? 1 : 0
   source = "../../aws/webhook"
 
+  providers = {
+    aws = aws.main
+  }
+  
   aws_region                 = var.region
   environment                = var.env
   project_name               = var.name
