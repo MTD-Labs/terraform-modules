@@ -740,12 +740,6 @@ variable "mq_ecs_read_only_access" {
   default     = false
 }
 
-variable "webhook_enabled" {
-  description = "Whether to create Amazon MQ resources"
-  type        = bool
-  default     = false
-}
-
 variable "sns_alert_topic_arn" {
   description = "SNS Topic for webhook alerts"
   type        = string
