@@ -134,9 +134,9 @@ variable "ecs_containers" {
       }
       volumes = [
         {
-          name                        = "web-container-efs-storage"
-          container_path              = "/opt/web-container-data"
-          read_only                   = false
+          name           = "web-container-efs-storage"
+          container_path = "/opt/web-container-data"
+          read_only      = false
         }
       ]
     },
@@ -163,9 +163,9 @@ variable "ecs_containers" {
       }
       volumes = [
         {
-          name                        = "api-container-efs-storage"
-          container_path              = "/opt/api-container-data"
-          read_only                   = false
+          name           = "api-container-efs-storage"
+          container_path = "/opt/api-container-data"
+          read_only      = false
         }
       ]
     }
@@ -761,8 +761,8 @@ variable "webhook_path_prefix" {
 
 variable "webhook_console_allowed_cidrs" {
   description = "Webhook Rabbit allow cidrs"
-  type        = string
-  default     = ""
+  type        = list(string)
+  default     = []
 }
 
 variable "alchemy_source_ips" {
@@ -798,6 +798,12 @@ variable "webhook_enabled" {
   default     = false
 }
 
+variable "enable_backup" {
+  description = "Whether to create Amazon MQ resources"
+  type        = bool
+  default     = false
+}
+
 variable "backup_retention_days" {
   description = "Backup retention period in days."
   type        = number
@@ -807,5 +813,5 @@ variable "backup_retention_days" {
 variable "backup_schedule" {
   description = "Backup schedule in cron format."
   type        = string
-  default     = "cron(0 3 * * ? *)"  # Daily at 3 AM UTC
+  default     = "cron(0 3 * * ? *)" # Daily at 3 AM UTC
 }

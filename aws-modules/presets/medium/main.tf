@@ -104,7 +104,7 @@ module "alb" {
   idle_timeout = var.alb_idle_timeout
 
   #cdn_bucket_names = [module.s3[1].s3_bucket_bucket_regional_domain_name]
-  lambda_edge_enabled    = var.lambda_edge_enabled
+  lambda_edge_enabled = var.lambda_edge_enabled
   ############# If using docker image for lambda, set lambda_edge_enabled to `false`:
   cdn_enabled            = var.cdn_enabled
   cdn_buckets            = local.public_bucket_list
@@ -157,11 +157,11 @@ module "ecs" {
   cluster_name = var.ecs_cluster_name
   containers   = local.final_ecs_containers
 
-  loki_enabled             = var.loki_enabled
-  grafana_domain           = var.grafana_domain
-  loki_ec2_instance_type   = var.loki_ec2_instance_type
-  loki_ec2_key_name        = var.loki_ec2_key_name
-  grafana_admin_password   = var.grafana_admin_password
+  loki_enabled           = var.loki_enabled
+  grafana_domain         = var.grafana_domain
+  loki_ec2_instance_type = var.loki_ec2_instance_type
+  loki_ec2_key_name      = var.loki_ec2_key_name
+  grafana_admin_password = var.grafana_admin_password
 
   efs_enabled          = var.efs_enabled
   efs_performance_mode = var.efs_performance_mode
@@ -309,36 +309,35 @@ module "elasticsearch" {
   tags                  = var.tags
 }
 
-module "mq" {
+module "webhook" {
   count  = var.webhook_enabled == true ? 1 : 0
   source = "../../aws/webhook"
 
-  aws_region = var.region
-  environment    = var.env
-  project_name   = var.name
-  tags   = var.tags
-  sns_alert_topic_arn = var.sns_alert_topic_arn
+  aws_region                 = var.region
+  environment                = var.env
+  project_name               = var.name
+  tags                       = var.tags
+  sns_alert_topic_arn        = var.sns_alert_topic_arn
   enable_detailed_monitoring = true
 
-  webhook_path_prefix = var.webhook_path_prefix
-  api_stage_name = var.env
-  vpc_id                  = module.vpc.vpc_id
-  vpc_private_subnet_ids             = module.vpc.private_subnets
-  console_allowed_cidrs = var.webhook_console_allowed_cidrs
+  webhook_path_prefix    = var.webhook_path_prefix
+  api_stage_name         = var.env
+  vpc_id                 = module.vpc.vpc_id
+  vpc_private_subnet_ids = module.vpc.private_subnets
+  console_allowed_cidrs  = var.webhook_console_allowed_cidrs
 
-  engine_type                = var.mq_engine_type
-  mq_engine_version             = var.mq_engine_version
-  mq_instance_type              = var.mq_instance_type
-  mq_deployment_mode            = var.mq_deployment_mode
-  mq_admin_username             = var.mq_admin_username
+  mq_engine_version  = var.mq_engine_version
+  mq_instance_type   = var.mq_instance_type
+  mq_deployment_mode = var.mq_deployment_mode
+  mq_admin_username  = var.mq_admin_username
 
-  alchemy_source_ips = var.alchemy_source_ips
+  alchemy_source_ips  = var.alchemy_source_ips
   rabbitmq_queue_name = var.rabbitmq_queue_name
   rabbitmq_queue_type = var.rabbitmq_queue_type
 
-  enable_backup = var.enable_backup
+  enable_backup         = var.enable_backup
   backup_retention_days = var.backup_retention_days
-  backup_schedule = var.backup_schedule
+  backup_schedule       = var.backup_schedule
 }
 
 module "mq" {
@@ -374,11 +373,11 @@ module "mq" {
   kms_ssm_key_arn = var.mq_kms_ssm_key_arn
   kms_mq_key_arn  = var.mq_kms_mq_key_arn
 
-  bastion_security_group_id      = module.ec2[0].security_group_id
-  additional_security_group_ids  = var.mq_additional_security_group_ids
-  allow_vpc_cidr_block           = var.mq_allow_vpc_cidr_block
-  allow_vpc_private_cidr_blocks  = var.mq_allow_vpc_private_cidr_blocks
-  extra_allowed_cidr_blocks      = var.mq_extra_allowed_cidr_blocks
+  bastion_security_group_id     = module.ec2[0].security_group_id
+  additional_security_group_ids = var.mq_additional_security_group_ids
+  allow_vpc_cidr_block          = var.mq_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks = var.mq_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks     = var.mq_extra_allowed_cidr_blocks
 }
 
 
