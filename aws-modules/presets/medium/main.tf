@@ -314,7 +314,8 @@ module "webhook" {
   source = "../../aws/webhook"
 
   providers = {
-    aws = aws.main
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
   }
 
   aws_region                 = var.region
