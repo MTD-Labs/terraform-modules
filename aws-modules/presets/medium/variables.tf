@@ -743,7 +743,7 @@ variable "mq_ecs_read_only_access" {
 variable "sns_alert_topic_arn" {
   description = "SNS Topic for webhook alerts"
   type        = string
-  default     = "10.0.0.0/8"
+  default     = ""
 }
 
 

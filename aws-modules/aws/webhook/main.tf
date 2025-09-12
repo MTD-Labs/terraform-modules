@@ -54,6 +54,14 @@ resource "aws_sqs_queue_policy" "webhook_dlq_policy" {
   })
 }
 
+# ---------------------------
+# SNS Topic for Alerts
+# ---------------------------
+resource "aws_sns_topic" "alerts" {
+  name = "${var.environment}-${var.project_name}"
+  tags = local.common_tags
+}
+
 # CloudWatch Alarm for DLQ
 resource "aws_cloudwatch_metric_alarm" "dlq_messages" {
   alarm_name          = "${local.name_prefix}-webhook-dlq-messages"
@@ -71,7 +79,7 @@ resource "aws_cloudwatch_metric_alarm" "dlq_messages" {
     QueueName = aws_sqs_queue.webhook_dlq.name
   }
 
-  alarm_actions = var.sns_alert_topic_arn != "" ? [var.sns_alert_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
   tags          = local.common_tags
 }
 
@@ -276,7 +284,7 @@ resource "aws_cloudwatch_metric_alarm" "rabbitmq_cpu" {
     Broker = aws_mq_broker.rabbit.broker_name
   }
 
-  alarm_actions = var.sns_alert_topic_arn != "" ? [var.sns_alert_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
   tags          = local.common_tags
 }
 
@@ -296,7 +304,7 @@ resource "aws_cloudwatch_metric_alarm" "rabbitmq_memory" {
     Broker = aws_mq_broker.rabbit.broker_name
   }
 
-  alarm_actions = var.sns_alert_topic_arn != "" ? [var.sns_alert_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
   tags          = local.common_tags
 }
 
@@ -505,7 +513,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
     FunctionName = aws_lambda_function.webhook.function_name
   }
 
-  alarm_actions = var.sns_alert_topic_arn != "" ? [var.sns_alert_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
   tags          = local.common_tags
 }
 
@@ -526,7 +534,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles" {
     FunctionName = aws_lambda_function.webhook.function_name
   }
 
-  alarm_actions = var.sns_alert_topic_arn != "" ? [var.sns_alert_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
   tags          = local.common_tags
 }
 
@@ -610,7 +618,7 @@ resource "aws_cloudwatch_metric_alarm" "api_4xx_errors" {
     Stage   = aws_apigatewayv2_stage.api.name
   }
 
-  alarm_actions = var.sns_alert_topic_arn != "" ? [var.sns_alert_topic_arn] : []
+  alarm_actions = [aws_sns_topic.alerts.arn]
   tags          = local.common_tags
 }
 
