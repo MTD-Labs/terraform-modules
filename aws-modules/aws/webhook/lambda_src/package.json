@@ -1,0 +1,8 @@
+{
+  "type": "module",
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "@aws-sdk/client-secrets-manager": "^3.637.0",
+    "@aws-sdk/client-ssm": "^3.637.0"
+  }
+}

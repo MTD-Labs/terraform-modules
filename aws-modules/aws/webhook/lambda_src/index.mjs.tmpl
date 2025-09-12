@@ -1,0 +1,303 @@
+// index.mjs — Alchemy webhook → RabbitMQ (Amazon MQ) publisher with IP validation
+import crypto from "node:crypto";
+import amqplib from "amqplib";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+
+const secrets = new SecretsManagerClient({});
+const ssm     = new SSMClient({});
+
+// --- Env (from Terraform) ---
+const SECRET_ID         = process.env.ALCHEMY_SIGNING_SECRET_ID; // name or ARN
+const EXPECTED_TOKEN    = process.env.EXPECTED_TOKEN;
+const ALLOWED_IPS       = process.env.ALLOWED_IPS || "[]";       // JSON array of allowed IPs
+const RABBIT_ENDPOINT   = process.env.RABBITMQ_ENDPOINT;         // amqps://host:5671
+const RABBIT_VHOST      = process.env.RABBITMQ_VHOST || "/";
+const RABBIT_USER       = process.env.RABBITMQ_USER || "";
+const RABBIT_PASS_SSM   = process.env.RABBITMQ_PASS_SSM || "";
+const RABBIT_QUEUE      = process.env.RABBITMQ_QUEUE || "alchemy.events";
+const RABBIT_QUEUE_TYPE = (process.env.RABBITMQ_QUEUE_TYPE || "").toLowerCase(); // "quorum" or "classic" or ""
+const DEBUG             = String(process.env.DEBUG || "").toLowerCase() === "true";
+
+// ---------- helpers ----------
+async function getSigningKey() {
+  const res = await secrets.send(new GetSecretValueCommand({ SecretId: SECRET_ID }));
+  const raw = res.SecretString ?? (res.SecretBinary ? Buffer.from(res.SecretBinary).toString("utf8") : "");
+  let key = raw;
+  try {
+    const maybe = JSON.parse(raw);
+    if (maybe && typeof maybe === "object" && typeof maybe.signing_key === "string") key = maybe.signing_key;
+  } catch {}
+  key = String(key ?? "").trim();
+  if (!key) throw new Error("Signing key not found or empty in secret");
+  return key;
+}
+
+function getHeader(headers, name) {
+  if (!headers) return undefined;
+  const k = Object.keys(headers).find(h => h.toLowerCase() === name.toLowerCase());
+  return k ? headers[k] : undefined;
+}
+
+function getRawBody(event) {
+  if (!event?.body) return "";
+  return event.isBase64Encoded ? Buffer.from(event.body, "base64").toString("utf8") : event.body;
+}
+
+function safeCompareHex(a, b) {
+  if (!a || !b) return false;
+  const norm = s => String(s).trim().replace(/^sha256=/i, "").toLowerCase();
+  const A = Buffer.from(norm(a), "utf8");
+  const B = Buffer.from(norm(b), "utf8");
+  if (A.length !== B.length) return false;
+  return crypto.timingSafeEqual(A, B);
+}
+
+async function getSsm(name) {
+  if (!name) throw new Error("SSM parameter name not provided");
+  const res = await ssm.send(new GetParameterCommand({ Name: name, WithDecryption: true }));
+  const val = res.Parameter?.Value || "";
+  if (!val) throw new Error(`SSM parameter ${name} empty`);
+  return val;
+}
+
+async function buildRabbitUrl() {
+  if (!RABBIT_ENDPOINT) throw new Error("RABBITMQ_ENDPOINT not set");
+  const pass = await getSsm(RABBIT_PASS_SSM);
+  const u = new URL(RABBIT_ENDPOINT); // amqps://host:5671
+  u.username = encodeURIComponent(RABBIT_USER);
+  u.password = encodeURIComponent(pass);
+  u.pathname = "/" + encodeURIComponent(RABBIT_VHOST.replace(/^\//, ""));
+  return u.toString(); // amqps://user:pass@host:5671/%2F
+}
+
+// Get source IP from API Gateway event
+function getSourceIp(event) {
+  // API Gateway HTTP (v2) format
+  if (event?.requestContext?.http?.sourceIp) {
+    return event.requestContext.http.sourceIp;
+  }
+  // API Gateway REST (v1) format or fallback
+  if (event?.requestContext?.identity?.sourceIp) {
+    return event.requestContext.identity.sourceIp;
+  }
+  // Direct header check as last resort
+  const xForwardedFor = getHeader(event?.headers, "x-forwarded-for");
+  if (xForwardedFor) {
+    // X-Forwarded-For can contain multiple IPs, take the first one
+    return xForwardedFor.split(',')[0].trim();
+  }
+  return null;
+}
+
+// Validate if source IP is in allowed list
+function isIpAllowed(sourceIp) {
+  if (!sourceIp) return false;
+  try {
+    const allowedList = JSON.parse(ALLOWED_IPS);
+    if (!Array.isArray(allowedList) || allowedList.length === 0) {
+      // If no IPs configured, reject all (fail-safe)
+      console.warn("No allowed IPs configured, rejecting request");
+      return false;
+    }
+
+    // Normalize IPs (remove /32 suffix if present)
+    const normalizedAllowed = allowedList.map(ip =>
+      String(ip).replace(/\/32$/, '').trim()
+    );
+
+    const normalizedSource = sourceIp.trim();
+
+    if (DEBUG) {
+      console.log(JSON.stringify({
+        msg: "ip_check",
+        sourceIp: normalizedSource,
+        allowedIps: normalizedAllowed,
+        allowed: normalizedAllowed.includes(normalizedSource)
+      }));
+    }
+
+    return normalizedAllowed.includes(normalizedSource);
+  } catch (err) {
+    console.error(JSON.stringify({
+      msg: "ip_validation_error",
+      error: String(err?.message || err)
+    }));
+    return false; // Fail closed on error
+  }
+}
+
+/** ---------- QUEUE ENSURER (TOP-LEVEL) ---------- */
+async function ensureQueue(ch) {
+  const createAsQuorum = RABBIT_QUEUE_TYPE === "quorum";
+  const args = createAsQuorum ? { "x-queue-type": "quorum" } : undefined;
+
+  // Idempotent: creates if missing; no-op if it already exists
+  await ch.assertQueue(RABBIT_QUEUE, { durable: true });
+
+
+  if (DEBUG) {
+    console.log(JSON.stringify({
+      msg: "queue_ready",
+      queue: res.queue,
+      messageCount: res.messageCount,
+      consumerCount: res.consumerCount,
+      type: createAsQuorum ? "quorum" : "classic"
+    }));
+  }
+}
+
+// Publish with confirms + retries
+async function publishToRabbit(payload, messageId, headers = {}) {
+  const url = await buildRabbitUrl();
+
+  const attempts = 5;
+  let lastErr;
+  for (let i = 1; i <= attempts; i++) {
+    let conn;
+    try {
+      conn = await amqplib.connect(url, {
+        timeout: 5000,
+        heartbeat: 30,
+        clientProperties: { product: "trendex-webhook" }
+      });
+      const ch = await conn.createConfirmChannel();
+
+      await ensureQueue(ch);
+
+      const ok = ch.sendToQueue(
+        RABBIT_QUEUE,
+        Buffer.from(JSON.stringify(payload)),
+        {
+          persistent: true,                 // deliveryMode=2 (disk)
+          contentType: "application/json",
+          messageId: String(messageId),
+          headers
+        }
+      );
+      await ch.waitForConfirms();          // broker fsync/commit before we 200
+      await ch.close();
+      await conn.close();
+      if (!ok) throw new Error("sendToQueue returned false");
+      return;                              // success
+    } catch (err) {
+      lastErr = err;
+      if (conn) { try { await conn.close(); } catch {} }
+      if (i < attempts) {
+        const backoff = Math.pow(2, i - 1) * 100; // 100..1600ms
+        if (DEBUG) console.warn(JSON.stringify({
+          msg: "publish_retry",
+          attempt: i,
+          backoff,
+          error: String(err?.message || err)
+        }));
+        await new Promise(r => setTimeout(r, backoff));
+        continue;
+      }
+      throw lastErr;
+    }
+  }
+}
+
+// ---------- handler ----------
+export const handler = async (event) => {
+  try {
+    // 1) IP validation - FIRST check before anything else
+    const sourceIp = getSourceIp(event);
+    if (!sourceIp) {
+      console.error(JSON.stringify({
+        msg: "no_source_ip",
+        requestContext: event?.requestContext
+      }));
+      return { statusCode: 403, body: "Forbidden" };
+    }
+
+    if (!isIpAllowed(sourceIp)) {
+      console.warn(JSON.stringify({
+        msg: "unauthorized_ip",
+        sourceIp,
+        allowedIps: ALLOWED_IPS
+      }));
+      return { statusCode: 403, body: "Forbidden" };
+    }
+
+    // 2) Token guard
+    const providedToken = event?.pathParameters?.token;
+    if (!providedToken || providedToken !== EXPECTED_TOKEN) {
+      if (DEBUG) console.log(JSON.stringify({
+        msg: "invalid_token",
+        provided: providedToken ? "wrong" : "missing"
+      }));
+      return { statusCode: 404, body: "not found" };
+    }
+
+    // 3) Raw body + signature
+    const raw = getRawBody(event);
+    const sig = getHeader(event.headers, "x-alchemy-signature");
+    if (!sig) {
+      console.warn(JSON.stringify({ msg: "missing_signature", sourceIp }));
+      return { statusCode: 401, body: "missing signature" };
+    }
+
+    // 4) Verify HMAC
+    const signingKey = await getSigningKey();
+    const expected = crypto.createHmac("sha256", signingKey).update(raw).digest("hex");
+    if (!safeCompareHex(sig, expected)) {
+      console.warn(JSON.stringify({ msg: "invalid_signature", sourceIp }));
+      return { statusCode: 401, body: "invalid signature" };
+    }
+
+    // 5) Parse payload
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return { statusCode: 400, body: "bad json" };
+    }
+
+    // 6) Metadata
+    const dedupeId = payload?.event?.id ?? payload?.id ?? crypto.randomUUID();
+    const groupId  = `${payload?.chain ?? "unknown"}:${payload?.address ?? "all"}`;
+
+    // 7) Enrich payload with source IP for tracking
+    const enrichedPayload = {
+      ...payload,
+      _metadata: {
+        sourceIp,
+        receivedAt: new Date().toISOString(),
+        dedupeId,
+        groupId
+      }
+    };
+
+    // 8) Publish to RabbitMQ
+    await publishToRabbit(
+      enrichedPayload,
+      dedupeId,
+      {
+        chain: payload?.chain,
+        address: payload?.address,
+        groupId
+      }
+    );
+
+    if (DEBUG) console.log(JSON.stringify({
+      msg: "webhook_success",
+      dedupeId,
+      chain: payload?.chain,
+      sourceIp
+    }));
+
+    return { statusCode: 200, body: "ok" };
+  } catch (err) {
+    console.error(JSON.stringify({
+      msg: "webhook_handler_error",
+      error: String(err?.message || err),
+      stack: err?.stack
+    }));
+
+    // Important: Return 502 so API Gateway knows to retry
+    // This will eventually send to DLQ if Lambda keeps failing
+    return { statusCode: 502, body: "processing failed" };
+  }
+};

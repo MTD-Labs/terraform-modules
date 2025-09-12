@@ -310,6 +310,38 @@ module "elasticsearch" {
 }
 
 module "mq" {
+  count  = var.webhook_enabled == true ? 1 : 0
+  source = "../../aws/webhook"
+
+  aws_region = var.region
+  environment    = var.env
+  project_name   = var.name
+  tags   = var.tags
+  sns_alert_topic_arn = var.sns_alert_topic_arn
+  enable_detailed_monitoring = true
+
+  webhook_path_prefix = var.webhook_path_prefix
+  api_stage_name = var.env
+  vpc_id                  = module.vpc.vpc_id
+  vpc_private_subnet_ids             = module.vpc.private_subnets
+  console_allowed_cidrs = var.webhook_console_allowed_cidrs
+
+  engine_type                = var.mq_engine_type
+  mq_engine_version             = var.mq_engine_version
+  mq_instance_type              = var.mq_instance_type
+  mq_deployment_mode            = var.mq_deployment_mode
+  mq_admin_username             = var.mq_admin_username
+
+  alchemy_source_ips = var.alchemy_source_ips
+  rabbitmq_queue_name = var.rabbitmq_queue_name
+  rabbitmq_queue_type = var.rabbitmq_queue_type
+
+  enable_backup = var.enable_backup
+  backup_retention_days = var.backup_retention_days
+  backup_schedule = var.backup_schedule
+}
+
+module "mq" {
   count  = var.mq_enabled == true ? 1 : 0
   source = "../../aws/mq-broker"
 
@@ -348,6 +380,8 @@ module "mq" {
   allow_vpc_private_cidr_blocks  = var.mq_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks      = var.mq_extra_allowed_cidr_blocks
 }
+
+
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
   count      = var.mq_enabled == true ? 1 : 0

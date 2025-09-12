@@ -620,19 +620,19 @@ variable "mq_enabled" {
 variable "mq_engine_type" {
   description = "Type of broker engine (ACTIVEMQ or RABBITMQ)"
   type        = string
-  default     = "ACTIVEMQ"
+  default     = "RABBITMQ"
 }
 
 variable "mq_engine_version" {
   description = "The version of the broker engine"
   type        = string
-  default     = "5.17.6"
+  default     = "3.13"
 }
 
 variable "mq_instance_type" {
   description = "The broker's instance type"
   type        = string
-  default     = "mq.t3.micro"
+  default     = "mq.m7g.medium"
 }
 
 variable "mq_deployment_mode" {
@@ -738,4 +738,74 @@ variable "mq_ecs_read_only_access" {
   description = "Whether to grant ECS tasks read-only access to MQ (instead of full access)"
   type        = bool
   default     = false
+}
+
+variable "webhook_enabled" {
+  description = "Whether to create Amazon MQ resources"
+  type        = bool
+  default     = false
+}
+
+variable "sns_alert_topic_arn" {
+  description = "SNS Topic for webhook alerts"
+  type        = string
+  default     = "10.0.0.0/8"
+}
+
+
+variable "webhook_path_prefix" {
+  description = "SNS Topic for webhook alerts"
+  type        = string
+  default     = ""
+}
+
+variable "webhook_console_allowed_cidrs" {
+  description = "Webhook Rabbit allow cidrs"
+  type        = string
+  default     = ""
+}
+
+variable "alchemy_source_ips" {
+  description = "Static IPs allowed to call API Gateway (Alchemy egress IPs)."
+  type        = list(string)
+  default = [
+    "54.236.136.17/32",
+    "34.237.24.169/32",
+    "87.241.157.116/32",
+  ]
+}
+
+variable "rabbitmq_queue_name" {
+  description = "Durable RabbitMQ queue name to publish webhook events to."
+  type        = string
+  default     = "alchemy.events"
+}
+
+variable "rabbitmq_queue_type" {
+  description = "RabbitMQ queue type: 'quorum' (recommended for HA) or 'classic'."
+  type        = string
+  default     = "classic"
+
+  validation {
+    condition     = contains(["quorum", "classic", ""], var.rabbitmq_queue_type)
+    error_message = "Queue type must be 'quorum', 'classic', or empty string."
+  }
+}
+
+variable "webhook_enabled" {
+  description = "Whether to create Amazon MQ resources"
+  type        = bool
+  default     = false
+}
+
+variable "backup_retention_days" {
+  description = "Backup retention period in days."
+  type        = number
+  default     = 7
+}
+
+variable "backup_schedule" {
+  description = "Backup schedule in cron format."
+  type        = string
+  default     = "cron(0 3 * * ? *)"  # Daily at 3 AM UTC
 }
