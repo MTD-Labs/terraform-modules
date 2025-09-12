@@ -310,7 +310,7 @@ resource "local_file" "lambda_function" {
 
 resource "null_resource" "lambda_npm_install" {
   triggers = {
-    index_hash   = filesha256("${path.module}/lambda_src/index.mjs")
+    index_hash   = filesha256("${path.module}/lambda_src/index.mjs.tmpl")
     package_hash = filesha256("${path.module}/lambda_src/package.json")
     lock_hash    = try(filesha256("${path.module}/lambda_src/package-lock.json"), "")
   }

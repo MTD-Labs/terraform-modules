@@ -316,13 +316,12 @@ module "webhook" {
   providers = {
     aws = aws.main
   }
-  
+
   aws_region                 = var.region
   environment                = var.env
   project_name               = var.name
   tags                       = var.tags
   sns_alert_topic_arn        = var.sns_alert_topic_arn
-  enable_detailed_monitoring = true
 
   webhook_path_prefix    = var.webhook_path_prefix
   api_stage_name         = var.env
