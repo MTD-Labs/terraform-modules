@@ -151,11 +151,20 @@ resource "aws_volume_attachment" "bastion_additional_disk" {
   device_name = "/dev/xvdf"
 }
 
+resource "tls_private_key" "ssh" {
+  algorithm = "ED25519"
+}
+
+resource "aws_key_pair" "this" {
+  key_name   = "${var.env}-${var.name}"
+  public_key = tls_private_key.ssh.public_key_openssh
+}
+
 resource "aws_instance" "bastion" {
   ami                  = var.ami_id
   ebs_optimized        = true
   instance_type        = var.instance_type
-  key_name             = var.key_name
+  key_name             = aws_key_pair.this.key_name
   availability_zone    = "${var.region}a"
   iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
 
@@ -221,7 +230,7 @@ resource "null_resource" "wait_for_cloud_init" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -245,7 +254,7 @@ resource "null_resource" "service_env_files" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 }
@@ -273,7 +282,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -285,7 +294,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -297,7 +306,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -309,7 +318,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -321,7 +330,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -333,7 +342,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
   provisioner "file" {
@@ -344,7 +353,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
   provisioner "remote-exec" {
@@ -357,7 +366,7 @@ resource "null_resource" "dev_provisioning" {
       type        = "ssh"
       host        = aws_instance.bastion.public_ip
       user        = "ubuntu"
-      private_key = file(var.private_key_path)
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 }
