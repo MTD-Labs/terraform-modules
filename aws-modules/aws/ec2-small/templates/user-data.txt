@@ -5,9 +5,15 @@ exec > >(tee /var/log/my-user-data.log) 2>&1
 echo "=== Starting user-data at $(date) ==="
 
 # Wait for instance metadata and AWS CLI setup
-apt-get update && apt-get install -y awscli jq
-INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-REGION=$(curl -s http://169.254.169.254/latest/meta-data/placement/region)
+apt-get update && apt-get install -y jq unzip
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
 
 # Find the device attached to the volume tagged as "Role: AdditionalDisk"
 VOLUME_ID=$(aws ec2 describe-volumes --region "$REGION" \
@@ -15,7 +21,7 @@ VOLUME_ID=$(aws ec2 describe-volumes --region "$REGION" \
   --query "Volumes[0].VolumeId" --output text)
 
 if [ "$VOLUME_ID" != "None" ]; then
-  DEVICE=$(lsblk -ndo NAME,TYPE,MOUNTPOINT | grep -w disk | awk '$3 == "" {print $1}' | head -n 1)
+  DEVICE=$(lsblk -ndo NAME,TYPE,MOUNTPOINT | grep -w disk | awk '$3 == "" {print $1}' | sed -n 2p)
   if [ -n "$DEVICE" ]; then
     DEVICE="/dev/$DEVICE"
     echo "Found unmounted disk: $DEVICE"
@@ -62,8 +68,7 @@ apt-get install -y \
   net-tools \
   socat \
   jq \
-  expect \
-  awscli
+  expect
 
 # Install Docker
 apt-get update
