@@ -153,5 +153,5 @@ variable "services_list" {
 
 variable "ami_id" {
   type    = string
-  default = "ami-03e40101f6ac56b76"
+  default = "ami-082c5ebcf775970ae"
 }
