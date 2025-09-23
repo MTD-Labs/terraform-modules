@@ -87,7 +87,7 @@ module "ec2" {
 
   ssh_authorized_keys_secret = var.bastion_ssh_authorized_keys_secret
   allowed_tcp_ports          = var.allowed_tcp_ports
-  enable_public_access       = true
+  enable_public_access       = false
   key_name                   = var.key_name
   ec2_root_volume_size       = var.ec2_root_volume_size
   ec2_root_volume_type       = var.ec2_root_volume_type
