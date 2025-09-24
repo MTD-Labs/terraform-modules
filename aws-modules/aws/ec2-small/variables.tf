@@ -155,3 +155,22 @@ variable "ami_id" {
   type    = string
   default = "ami-082c5ebcf775970ae"
 }
+
+
+variable "cloudflare_api_token" {
+  type        = string
+  sensitive   = true
+  description = "Cloudflare API token with Zone.DNS:Edit on the zone"
+}
+
+variable "cloudflare_zone" {
+  type        = string
+  description = "Root zone in Cloudflare (e.g., trendex.my)"
+  default     = "trendex.my"
+}
+
+variable "cloudflare_proxied" {
+  type        = bool
+  description = "Whether to enable Cloudflare proxy (orange cloud)"
+  default     = true
+}

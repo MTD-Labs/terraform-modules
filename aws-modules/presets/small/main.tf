@@ -101,6 +101,9 @@ module "ec2" {
   ubuntu_ami_name_pattern    = var.ubuntu_ami_name_pattern
   instance_arch              = var.instance_arch
   services_list              = var.services_list
+  cloudflare_api_token       = var.cloudflare_api_token
+  cloudflare_proxied         = var.cloudflare_proxied
+  cloudflare_zone            = var.cloudflare_zone
 }
 
 module "s3" {

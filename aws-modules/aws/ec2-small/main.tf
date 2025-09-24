@@ -1,4 +1,11 @@
 data "aws_caller_identity" "current" {}
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+
+data "cloudflare_zone" "this" {
+  name = var.cloudflare_zone
+}
 
 locals {
   tags = merge({
@@ -8,6 +15,10 @@ locals {
     tf-module  = "aws/ec2"
   }, var.tags)
   name = "${var.env}-${var.name}"
+  target_public_ip = coalesce(
+    try(aws_eip.eip[0].public_ip, null),
+    try(aws_instance.bastion.public_ip, null)
+  )
 }
 
 data "aws_iam_policy_document" "secrets_read_policy_doc" {
@@ -374,4 +385,26 @@ resource "null_resource" "dev_provisioning" {
 resource "aws_iam_instance_profile" "ssm_profile" {
   name = "${var.env}-SSMInstanceProfile"
   role = aws_iam_role.ssm_role.name
+}
+
+resource "cloudflare_record" "stage_a" {
+  count           = var.enable_public_access && local.target_public_ip != null ? 1 : 0
+  zone_id         = data.cloudflare_zone.this.id
+  name            = "stage"
+  type            = "A"
+  content         = local.target_public_ip
+  ttl             = 1
+  proxied         = var.cloudflare_proxied
+  allow_overwrite = true
+}
+
+resource "cloudflare_record" "stage_wildcard_a" {
+  count           = var.enable_public_access && local.target_public_ip != null ? 1 : 0
+  zone_id         = data.cloudflare_zone.this.id
+  name            = "*.stage"
+  type            = "A"
+  content         = local.target_public_ip
+  ttl             = 1
+  proxied         = var.cloudflare_proxied
+  allow_overwrite = true
 }
