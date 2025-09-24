@@ -385,22 +385,20 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 }
 
 resource "cloudflare_record" "stage_a" {
-  count           = var.enable_public_access && local.target_public_ip != null ? 1 : 0
   zone_id         = data.cloudflare_zone.this.id
   name            = "stage"
   type            = "A"
-  content         = local.target_public_ip
+  content         = aws_instance.bastion.public_ip
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
 }
 
 resource "cloudflare_record" "stage_wildcard_a" {
-  count           = var.enable_public_access && local.target_public_ip != null ? 1 : 0
   zone_id         = data.cloudflare_zone.this.id
   name            = "*.stage"
   type            = "A"
-  content         = local.target_public_ip
+  content         = aws_instance.bastion.public_ip
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
