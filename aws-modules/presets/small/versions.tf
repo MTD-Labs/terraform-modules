@@ -9,14 +9,11 @@ terraform {
       configuration_aliases = [aws.main, aws.us_east_1]
     }
 
-    local    = ">= 2.2.2"
-    null     = ">= 3.1.1"
-    template = ">= 2.2.0"
-    random   = ">= 3.4.3"
-    cloudflare = {
-      source  = "cloudflare/cloudflare"
-      version = "~> 4.43"
-    }
+    local      = ">= 2.2.2"
+    null       = ">= 3.1.1"
+    template   = ">= 2.2.0"
+    random     = ">= 3.4.3"
+    cloudflare = "~> 4.43"
   }
 }
 
