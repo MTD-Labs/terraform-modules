@@ -156,13 +156,6 @@ variable "ami_id" {
   default = "ami-082c5ebcf775970ae"
 }
 
-
-variable "cloudflare_api_token" {
-  type        = string
-  sensitive   = true
-  description = "Cloudflare API token with Zone.DNS:Edit on the zone"
-}
-
 variable "cloudflare_zone" {
   type        = string
   description = "Root zone in Cloudflare (e.g., trendex.my)"
