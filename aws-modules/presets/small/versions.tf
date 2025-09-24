@@ -13,7 +13,7 @@ terraform {
     null       = ">= 3.1.1"
     template   = ">= 2.2.0"
     random     = ">= 3.4.3"
-    cloudflare = "~> 4.43"
+    cloudflare = ">= 4.43"
   }
 }
 
