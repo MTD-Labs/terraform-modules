@@ -1,7 +1,4 @@
 data "aws_caller_identity" "current" {}
-provider "cloudflare" {
-  api_token = var.cloudflare_api_token
-}
 
 data "cloudflare_zone" "this" {
   name = var.cloudflare_zone
