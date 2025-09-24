@@ -392,6 +392,7 @@ resource "cloudflare_record" "stage_a" {
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
+  depends_on = [aws_instance.bastion]
 }
 
 resource "cloudflare_record" "stage_wildcard_a" {
@@ -402,4 +403,5 @@ resource "cloudflare_record" "stage_wildcard_a" {
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
+  depends_on = [aws_instance.bastion]
 }
