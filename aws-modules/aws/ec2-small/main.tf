@@ -373,7 +373,7 @@ resource "null_resource" "dev_provisioning" {
   provisioner "remote-exec" {
     inline = [
       "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_user_id}.dkr.ecr.${var.region}.amazonaws.com",
-      "cd /app && docker compose up -d"
+      "cd /app && docker compose up -d --remove-orphans"
     ]
 
     connection {
