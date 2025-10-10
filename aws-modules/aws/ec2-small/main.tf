@@ -387,6 +387,18 @@ resource "null_resource" "dev_provisioning" {
       private_key = tls_private_key.ssh.private_key_openssh
     }
   }
+  provisioner "remote-exec" {
+    inline = [
+      "docker restart nginx"
+    ]
+
+    connection {
+      type        = "ssh"
+      host        = aws_instance.bastion.public_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
+    }
+  }
 }
 
 resource "aws_iam_instance_profile" "ssm_profile" {
