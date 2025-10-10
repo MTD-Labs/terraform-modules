@@ -373,6 +373,10 @@ resource "null_resource" "dev_provisioning" {
   provisioner "remote-exec" {
     inline = [
       "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_user_id}.dkr.ecr.${var.region}.amazonaws.com",
+      "cd /app && docker compose pull",
+      # Recreate only services that have mounted env files
+      "cd /app && docker compose up -d --force-recreate --no-deps trendex-backend trendex-public-frontend trendex-admin-frontend",
+      # Start all other services normally (they won't recreate if nothing changed)
       "cd /app && docker compose up -d --remove-orphans"
     ]
 
