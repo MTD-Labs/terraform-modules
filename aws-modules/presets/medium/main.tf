@@ -209,6 +209,12 @@ resource "aws_iam_role_policy_attachment" "ecs_task_postgres_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonRDSDataFullAccess"
 }
 
+resource "aws_iam_role_policy_attachment" "ecs_task_postgres_policy" {
+  count      = var.postgres_enabled == true ? 1 : 0
+  role       = module.ecs[0].ecs_task_exec_role_name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
 module "redis" {
   count  = var.redis_enabled == true ? 1 : 0
   source = "../../aws/redis"
