@@ -169,6 +169,8 @@ module "ecs" {
   efs_performance_mode = var.efs_performance_mode
   efs_throughput_mode  = var.efs_throughput_mode
 
+  ecs_platform_version = var.ecs_platform_version
+
 }
 
 module "postgres" {

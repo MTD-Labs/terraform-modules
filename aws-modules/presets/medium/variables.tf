@@ -809,3 +809,9 @@ variable "subject_alternative_names" {
   type        = list(string)
   default     = []
 }
+
+variable "ecs_platform_version" {
+  description = "ECS Platform Version"
+  type        = string
+  default     = "1.4.0"
+}

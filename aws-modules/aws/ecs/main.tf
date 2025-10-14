@@ -154,6 +154,7 @@ resource "aws_ecs_service" "container_service" {
   launch_type                        = "FARGATE"
   enable_execute_command             = true
   force_new_deployment               = true
+  platform_version                   = var.ecs_platform_version
   dynamic "load_balancer" {
     for_each = length(each.value.path) == 0 ? [] : [for path in each.value.path : path]
 

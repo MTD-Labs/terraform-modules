@@ -228,3 +228,9 @@ variable "efs_provisioned_throughput" {
   type        = number
   default     = null
 }
+
+variable "ecs_platform_version" {
+  description = "ECS Platform Version"
+  type        = string
+  default     = "1.4.0"
+}
