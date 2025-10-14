@@ -1,37 +1,37 @@
 locals {
   # ---------- Cache (Redis) ----------
-  cache_envs = {
-    CACHE_DRIVER     = "redis"
-    SESSION_DRIVER   = "redis"
-    REDIS_HOST       = format("%s://%s", "tls", module.redis[0].endpoint)
-    QUEUE_CONNECTION = "redis"
-  }
-  cache_secrets = {
-    REDIS_PASSWORD = module.redis[0].auth_token_ssm_arn
-  }
+  # cache_envs = {
+  #   CACHE_DRIVER     = "redis"
+  #   SESSION_DRIVER   = "redis"
+  #   REDIS_HOST       = format("%s://%s", "tls", module.redis[0].endpoint)
+  #   QUEUE_CONNECTION = "redis"
+  # }
+  # cache_secrets = {
+  #   REDIS_PASSWORD = module.redis[0].auth_token_ssm_arn
+  # }
 
   # ---------- Database (Postgres) ----------
-  db_envs = {
-    DB_CONNECTION = "pgsql"
-    DB_HOST       = var.postgres_rds_type == "rds" ? module.postgres[0].rds_instance_address[0] : module.postgres[0].cluster_endpoint[0]
-    DB_PORT       = "5432"
-    DB_DATABASE   = var.postgres_database_name
-    DB_USERNAME   = var.postgres_master_username
-  }
-  db_secrets = {
-    DB_PASSWORD = module.postgres[0].rds_instance_master_password_ssm_arn
-  }
+  # db_envs = {
+  #   DB_CONNECTION = "pgsql"
+  #   DB_HOST       = var.postgres_rds_type == "rds" ? module.postgres[0].rds_instance_address[0] : module.postgres[0].cluster_endpoint[0]
+  #   DB_PORT       = "5432"
+  #   DB_DATABASE   = var.postgres_database_name
+  #   DB_USERNAME   = var.postgres_master_username
+  # }
+  # db_secrets = {
+  #   DB_PASSWORD = module.postgres[0].rds_instance_master_password_ssm_arn
+  # }
 
-  # ---------- Amazon MQ (conditional) ----------
-  mq_envs = var.mq_enabled ? {
-    BROKER_URL      = module.mq[0].broker_endpoints.stomp_ssl
-    BROKER_USERNAME = var.mq_admin_username
-    BROKER_TYPE     = "activemq"
-  } : {}
+  # # ---------- Amazon MQ (conditional) ----------
+  # mq_envs = var.mq_enabled ? {
+  #   BROKER_URL      = module.mq[0].broker_endpoints.stomp_ssl
+  #   BROKER_USERNAME = var.mq_admin_username
+  #   BROKER_TYPE     = "activemq"
+  # } : {}
 
-  mq_secrets = var.mq_enabled ? {
-    BROKER_PASSWORD = module.mq[0].admin_password_ssm_arn
-  } : {}
+  # mq_secrets = var.mq_enabled ? {
+  #   BROKER_PASSWORD = module.mq[0].admin_password_ssm_arn
+  # } : {}
 
   # ---------- Public buckets for CDN ----------
   public_bucket_list = [
@@ -58,8 +58,8 @@ locals {
       priority             = container.priority
       port                 = container.port
       service_domain       = container.service_domain
-      envs                 = merge(container.envs, local.db_envs, local.cache_envs, local.mq_envs)
-      secrets              = merge(container.secrets, local.db_secrets, local.cache_secrets, local.mq_secrets)
+      envs                 = merge(container.envs)
+      secrets              = merge(container.secrets)
       health_check         = container.health_check
       volumes              = container.volumes
     }
