@@ -42,109 +42,78 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
 
   runtime_platform {
     operating_system_family = "LINUX"
-    cpu_architecture        = "X86_64"
+    cpu_architecture        = "ARM64"
   }
-
   dynamic "volume" {
-    for_each = var.efs_enabled ? each.value.volumes : []
+    for_each = each.value.volumes
     content {
       name = volume.value.name
-
       dynamic "efs_volume_configuration" {
-        for_each = try(aws_efs_file_system.ecs[0].id, null) != null ? [volume.value] : []
+        for_each = volume.value.efs_file_system_id != null ? [volume.value] : []
         content {
-          file_system_id          = aws_efs_file_system.ecs[0].id
-          root_directory          = "/${each.value.name}"
-          transit_encryption      = "ENABLED"
-          transit_encryption_port = 2999
-
-          authorization_config {
-            access_point_id = aws_efs_access_point.ecs[each.key].id
-            iam             = "ENABLED"
+          file_system_id          = efs_volume_configuration.value.efs_file_system_id
+          root_directory          = coalesce(efs_volume_configuration.value.efs_root_directory, "/")
+          transit_encryption      = coalesce(efs_volume_configuration.value.efs_transit_encryption, "ENABLED")
+          transit_encryption_port = coalesce(efs_volume_configuration.value.efs_transit_encryption_port, 2999)
+          
+          dynamic "authorization_config" {
+            for_each = efs_volume_configuration.value.efs_access_point_id != null ? [efs_volume_configuration.value] : []
+            content {
+              access_point_id = authorization_config.value.efs_access_point_id
+              iam             = "ENABLED"
+            }
           }
         }
       }
     }
   }
 
-  container_definitions = jsonencode(concat(
-    [for container in [each.value] : {
-      name    = container["name"]
-      image   = container["image"]
-      command = container["command"]
-      cpu     = container["cpu"]
-      memory  = container["memory"]
+  container_definitions = jsonencode([
+    {
+      name    = each.value["name"]
+      image   = each.value["image"]
+      command = each.value["command"]
+      cpu     = each.value["cpu"]
+      memory  = each.value["memory"]
       portMappings = [
         {
-          containerPort = container["port"]
+          containerPort = each.value["port"]
         }
       ]
 
-      environment = [for key, value in container["envs"] :
+      environment = [for key, value in each.value["envs"] :
         {
           name  = key
           value = value
         }
       ]
 
-      secrets = [for key, value in container["secrets"] :
+      secrets = [for key, value in each.value["secrets"] :
         {
           name      = key
           valueFrom = value
         }
       ]
 
-      mountPoints = var.efs_enabled ? [
+      mountPoints = [
         for v in each.value.volumes : {
           containerPath = v.container_path
           sourceVolume  = v.name
           readOnly      = coalesce(v.read_only, false)
         }
-      ] : []
+      ]
 
-      logConfiguration = var.loki_enabled ? {
-        logDriver = "awsfirelens"
-        options = {
-          "Name"              = "loki"
-          "Host"              = aws_instance.loki_grafana[0].private_ip
-          "Port"              = "3100"
-          "Labels"            = "{job=\"${container["name"]}\""
-          "LabelKeys"         = "container_name,ecs_task_definition,source,ecs_cluster"
-          "DropSingleKey"     = "true"
-          "RemoveKeys"        = "container_id,ecs_task_arn"
-          "AutoRetryRequests" = "true"
-          "LineFormat"        = "key_value"
-        }
-        } : {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.log_group.name
-          "awslogs-region"        = var.region
-          "awslogs-stream-prefix" = container["name"]
-        }
-      }
-    }],
-    var.loki_enabled ? [{
-      name      = "log_router"
-      image     = var.fluentbit_image
-      essential = true
-      firelensConfiguration = {
-        type = "fluentbit"
-        options = {
-          "enable-ecs-log-metadata" = "true"
-        }
-      }
       logConfiguration = {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.log_group.name
           "awslogs-region"        = var.region
-          "awslogs-stream-prefix" = "firelens"
+          "awslogs-stream-prefix" = each.value["name"]
         }
       }
-      memoryReservation = var.fluentbit_memoryreservation
-    }] : []
-  ))
+
+    }
+  ])
 }
 
 resource "aws_service_discovery_private_dns_namespace" "service_discovery_namespace" {
@@ -224,10 +193,10 @@ resource "aws_security_group" "ecs" {
   }
 
   ingress {
-    from_port   = each.value["port"]
-    to_port     = each.value["port"]
-    protocol    = "tcp"
-    cidr_blocks = var.vpc_private_cidr_blocks
+    from_port       = each.value["port"]
+    to_port         = each.value["port"]
+    protocol        = "tcp"
+    cidr_blocks     = var.vpc_private_cidr_blocks
   }
 
   egress {
@@ -425,9 +394,9 @@ resource "aws_iam_role_policy_attachment" "ecr_pull_assume_role" {
 
 
 resource "aws_vpc_endpoint" "ssm_messages" {
-  vpc_id              = var.vpc_id
-  service_name        = "com.amazonaws.${var.region}.ssmmessages"
-  vpc_endpoint_type   = "Interface"
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.ssmmessages"
+  vpc_endpoint_type = "Interface"
   private_dns_enabled = true
   security_group_ids = [
     var.alb_security_group
