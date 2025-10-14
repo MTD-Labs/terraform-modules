@@ -5,9 +5,9 @@
 resource "aws_acm_certificate" "alb_certificate" {
   count             = var.ecs_enabled ? 1 : 0
   domain_name       = var.domain_name
+  subject_alternative_names = var.subject_alternative_names
   provider          = aws.main
   validation_method = "DNS"
-
   tags = local.tags
 }
 

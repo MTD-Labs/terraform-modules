@@ -803,3 +803,9 @@ variable "backup_schedule" {
   type        = string
   default     = "cron(0 3 * * ? *)" # Daily at 3 AM UTC
 }
+
+variable "subject_alternative_names" {
+  description = "Additional domain names to include in the certificate"
+  type        = list(string)
+  default     = []
+}

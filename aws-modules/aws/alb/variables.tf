@@ -120,3 +120,9 @@ variable "lambda_edge_enabled" {
   type    = bool
   default = false
 }
+
+variable "subject_alternative_names" {
+  description = "Additional domain names to include in the certificate"
+  type        = list(string)
+  default     = []
+}

@@ -114,6 +114,8 @@ module "alb" {
   lambda_memory_size     = var.lambda_memory_size
   lambda_private_subnets = module.vpc.private_subnets
   lambda_security_group  = [module.alb.alb_aws_security_group_id]
+
+  subject_alternative_names = var.subject_alternative_names
 }
 
 module "ecr" {
