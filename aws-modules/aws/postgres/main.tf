@@ -93,7 +93,8 @@ module "rds" {
   vpc_security_group_ids              = [aws_security_group.rds_security_group.id]
   iam_database_authentication_enabled = false
   username                            = var.master_username
-  password                            = random_password.master.result
+  # password                            = random_password.master.result
+  password                            = "RUy7kB41W993jlPmXSmW"
   manage_master_user_password         = false
   db_name                             = var.database_name
   storage_encrypted                   = true
