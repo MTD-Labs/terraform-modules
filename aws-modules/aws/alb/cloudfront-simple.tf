@@ -83,7 +83,7 @@ resource "aws_cloudfront_distribution" "default" {
 
 resource "aws_cloudfront_origin_access_control" "default" {
   count                             = var.cdn_enabled ? 1 : 0
-  name                              = "default"
+  name                              = "default-${var.env}"
   description                       = "Default Policy"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
