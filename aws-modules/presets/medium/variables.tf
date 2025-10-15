@@ -828,4 +828,8 @@ variable "cloudflare_proxied" {
   default     = false
 }
 
-variable "alb_security_group_id" { type = string }
+variable "alb_security_group_id" {
+   type = string
+   description = "ALB SG ID to Allow Loki"
+   default = ""
+}
