@@ -1,9 +1,6 @@
 ########################################################################################################################
 ## Certificate for Application Load Balancer including validation via CNAME record
 ########################################################################################################################
-data "cloudflare_zone" "main" {
-  name = var.cloudflare_zone
-}
 resource "aws_acm_certificate" "alb_certificate" {
   count                     = var.ecs_enabled ? 1 : 0
   domain_name               = var.domain_name

@@ -90,10 +90,6 @@ resource "aws_cloudfront_origin_access_control" "default" {
   signing_protocol                  = "sigv4"
 }
 
-data "cloudflare_zone" "main" {
-  name = var.cloudflare_zone
-}
-
 # Create CNAME record in Cloudflare pointing CDN domain to CloudFront
 resource "cloudflare_record" "cloudfront_domain" {
   count   = var.cdn_enabled ? 1 : 0
