@@ -66,7 +66,8 @@ resource "aws_alb_listener" "alb_default_listener_https" {
 
   tags = local.tags
 
-  depends_on = [aws_acm_certificate.alb_certificate]
+  depends_on = [aws_acm_certificate_validation.alb_certificate]
+
 }
 
 resource "aws_security_group" "alb" {
