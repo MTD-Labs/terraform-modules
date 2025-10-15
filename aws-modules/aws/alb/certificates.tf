@@ -14,29 +14,46 @@ resource "aws_acm_certificate" "alb_certificate" {
   }
 }
 
-# Local variable to create a deduplicated list of validation options
+# Use known domains to create static keys for ALB certificate
 locals {
-  # Convert to list and deduplicate by resource_record_name
-  alb_cert_validation_list = var.ecs_enabled ? [
-    for record_name, details in {
-      for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
-      dvo.resource_record_name => {
-        name   = dvo.resource_record_name
-        record = dvo.resource_record_value
-        type   = dvo.resource_record_type
-      }
-    } : details
-  ] : []
+  # All domains that need validation (deduplicated)
+  alb_domains_for_validation = var.ecs_enabled ? toset(concat(
+    [var.domain_name],
+    var.subject_alternative_names
+  )) : []
 }
 
-# Create DNS validation records in Cloudflare for ALB certificate using count
+# Create DNS validation records in Cloudflare for ALB certificate
 resource "cloudflare_record" "alb_cert_validation" {
-  count = length(local.alb_cert_validation_list)
+  for_each = local.alb_domains_for_validation
 
   zone_id = data.cloudflare_zone.main.id
-  name    = local.alb_cert_validation_list[count.index].name
-  content = local.alb_cert_validation_list[count.index].record
-  type    = local.alb_cert_validation_list[count.index].type
+  
+  # Find the validation options for this domain
+  name = length([
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    dvo if dvo.domain_name == each.key
+  ]) > 0 ? [
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    dvo.resource_record_name if dvo.domain_name == each.key
+  ][0] : ""
+  
+  content = length([
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    dvo if dvo.domain_name == each.key
+  ]) > 0 ? [
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    dvo.resource_record_value if dvo.domain_name == each.key
+  ][0] : ""
+  
+  type = length([
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    dvo if dvo.domain_name == each.key
+  ]) > 0 ? [
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    dvo.resource_record_type if dvo.domain_name == each.key
+  ][0] : ""
+  
   ttl     = 60
   proxied = false
 }
@@ -45,7 +62,7 @@ resource "cloudflare_record" "alb_cert_validation" {
 resource "aws_acm_certificate_validation" "alb_certificate" {
   count                   = var.ecs_enabled ? 1 : 0
   certificate_arn         = aws_acm_certificate.alb_certificate[0].arn
-  validation_record_fqdns = cloudflare_record.alb_cert_validation[*].hostname
+  validation_record_fqdns = [for record in cloudflare_record.alb_cert_validation : record.hostname]
 }
 
 ########################################################################################################################
@@ -63,28 +80,13 @@ resource "aws_acm_certificate" "cloudfront_certificate" {
   }
 }
 
-# Local variable for CloudFront validation options
-locals {
-  cloudfront_cert_validation_list = var.cdn_enabled ? [
-    for record_name, details in {
-      for dvo in aws_acm_certificate.cloudfront_certificate[0].domain_validation_options :
-      dvo.resource_record_name => {
-        name   = dvo.resource_record_name
-        record = dvo.resource_record_value
-        type   = dvo.resource_record_type
-      }
-    } : details
-  ] : []
-}
-
-# Create DNS validation records in Cloudflare for CloudFront certificate using count
+# Create single DNS validation record for CloudFront certificate (only one domain)
 resource "cloudflare_record" "cloudfront_cert_validation" {
-  count = length(local.cloudfront_cert_validation_list)
-
+  count   = var.cdn_enabled ? 1 : 0
   zone_id = data.cloudflare_zone.main.id
-  name    = local.cloudfront_cert_validation_list[count.index].name
-  content = local.cloudfront_cert_validation_list[count.index].record
-  type    = local.cloudfront_cert_validation_list[count.index].type
+  name    = tolist(aws_acm_certificate.cloudfront_certificate[0].domain_validation_options)[0].resource_record_name
+  content = tolist(aws_acm_certificate.cloudfront_certificate[0].domain_validation_options)[0].resource_record_value
+  type    = tolist(aws_acm_certificate.cloudfront_certificate[0].domain_validation_options)[0].resource_record_type
   ttl     = 60
   proxied = false
 }
@@ -94,5 +96,5 @@ resource "aws_acm_certificate_validation" "cloudfront_certificate" {
   count                   = var.cdn_enabled ? 1 : 0
   provider                = aws.us_east_1
   certificate_arn         = aws_acm_certificate.cloudfront_certificate[0].arn
-  validation_record_fqdns = cloudflare_record.cloudfront_cert_validation[*].hostname
+  validation_record_fqdns = [cloudflare_record.cloudfront_cert_validation[0].hostname]
 }
