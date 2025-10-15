@@ -90,15 +90,19 @@ resource "aws_cloudfront_origin_access_control" "default" {
   signing_protocol                  = "sigv4"
 }
 
+data "cloudflare_zone" "main" {
+  name = var.cloudflare_zone
+}
+
 # Create CNAME record in Cloudflare pointing CDN domain to CloudFront
 resource "cloudflare_record" "cloudfront_domain" {
   count   = var.cdn_enabled ? 1 : 0
-  zone_id = var.cloudflare_zone_id
+  zone_id = data.cloudflare_zone.main.id
   name    = var.cdn_domain_name
-  value   = aws_cloudfront_distribution.default[0].domain_name
+  content = aws_cloudfront_distribution.default[0].domain_name
   type    = "CNAME"
   ttl     = 300
-  proxied = false  # MUST be false for CloudFront - CloudFront already acts as CDN
+  proxied = false
   
   depends_on = [
     aws_cloudfront_distribution.default,
