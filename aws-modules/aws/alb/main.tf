@@ -121,7 +121,8 @@ resource "aws_security_group" "alb" {
 data "cloudflare_zone" "main" {
   name = var.cloudflare_zone
 }
-# Create CNAME record in Cloudflare pointing domain to ALB
+
+# Create CNAME record in Cloudflare pointing main domain to ALB
 resource "cloudflare_record" "alb_domain" {
   count   = var.ecs_enabled ? 1 : 0
   zone_id = data.cloudflare_zone.main.id
@@ -130,7 +131,24 @@ resource "cloudflare_record" "alb_domain" {
   type    = "CNAME"
   ttl     = 300
   proxied = false
+
+  depends_on = [
+    aws_alb.alb,
+    aws_acm_certificate_validation.alb_certificate
+  ]
+}
+
+# Create CNAME records for all subject alternative names
+resource "cloudflare_record" "alb_san_domains" {
+  for_each = var.ecs_enabled ? toset(var.subject_alternative_names) : []
   
+  zone_id = data.cloudflare_zone.main.id
+  name    = each.value
+  content = aws_alb.alb[0].dns_name
+  type    = "CNAME"
+  ttl     = 300
+  proxied = false
+
   depends_on = [
     aws_alb.alb,
     aws_acm_certificate_validation.alb_certificate
