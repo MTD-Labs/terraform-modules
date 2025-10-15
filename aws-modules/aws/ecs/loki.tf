@@ -72,7 +72,7 @@ resource "aws_security_group_rule" "grafana_from_alb" {
   protocol                 = "tcp"
   security_group_id        = aws_security_group.loki_grafana[0].id
   source_security_group_id = var.alb_security_group_id
-  description              = "ALB -> Grafana 3000"
+  description              = "ALB Grafana 3000"
 }
 
 
