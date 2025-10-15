@@ -113,7 +113,7 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
           "Name"              = "loki"
           "Host"              = local.loki_host
           "Port"              = "3100"
-          "Labels"            = "{job=\"${container["name"]}\""
+          "Labels"            = "{job=\"${container["name"]}\"}"
           "LabelKeys"         = "container_name,ecs_task_definition,source,ecs_cluster"
           "DropSingleKey"     = "true"
           "RemoveKeys"        = "container_id,ecs_task_arn"
