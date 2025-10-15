@@ -12,6 +12,9 @@ locals {
   tags = merge({
     Name = var.cluster_name
   }, local.common_tags, var.tags)
+
+  # Add this local to safely handle Loki IP
+  loki_host = var.loki_enabled && length(aws_instance.loki_grafana) > 0 ? aws_instance.loki_grafana[0].private_ip : ""
 }
 
 ### ECS CLUSTER
@@ -39,6 +42,9 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
   task_role_arn            = aws_iam_role.task_role.arn
   cpu                      = each.value["cpu"]
   memory                   = each.value["memory"]
+
+  # Add explicit dependency on Loki instance when enabled
+  depends_on = var.loki_enabled ? [aws_instance.loki_grafana] : []
 
   runtime_platform {
     operating_system_family = "LINUX"
@@ -106,7 +112,7 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
         logDriver = "awsfirelens"
         options = {
           "Name"              = "loki"
-          "Host"              = aws_instance.loki_grafana[0].private_ip
+          "Host"              = local.loki_host
           "Port"              = "3100"
           "Labels"            = "{job=\"${container["name"]}\""
           "LabelKeys"         = "container_name,ecs_task_definition,source,ecs_cluster"
