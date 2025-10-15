@@ -171,7 +171,7 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "architecture"
-    values = [var.instance_arch]
+    values = [var.loki_instance_arch]
   }
 
   filter {

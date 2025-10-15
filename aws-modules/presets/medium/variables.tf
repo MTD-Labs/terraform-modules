@@ -833,3 +833,9 @@ variable "alb_security_group_id" {
    description = "ALB SG ID to Allow Loki"
    default = ""
 }
+
+variable "loki_instance_arch" {
+   type = string
+   description = "Loki Instance Arch"
+   default = "x86_64"
+}
