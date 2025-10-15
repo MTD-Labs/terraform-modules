@@ -1,3 +1,5 @@
+# loki.tf - Updated version
+
 # EC2 instance for Loki and Grafana
 resource "aws_instance" "loki_grafana" {
   count                  = var.loki_enabled ? 1 : 0
@@ -27,6 +29,17 @@ resource "aws_instance" "loki_grafana" {
   }
 }
 
+# Elastic IP for Loki instance
+resource "aws_eip" "loki_grafana" {
+  count    = var.loki_enabled ? 1 : 0
+  instance = aws_instance.loki_grafana[0].id
+  domain   = "vpc"
+
+  tags = merge({
+    Name = "${var.cluster_name}-loki-grafana-eip"
+  }, local.common_tags)
+}
+
 # Security group for Loki and Grafana
 resource "aws_security_group" "loki_grafana" {
   count       = var.loki_enabled ? 1 : 0
@@ -34,7 +47,7 @@ resource "aws_security_group" "loki_grafana" {
   description = "Security group for Loki and Grafana EC2 instance"
   vpc_id      = var.vpc_id
 
-  # Allow Loki (3100) from private CIDRs (OK as CIDR lists)
+  # Allow Loki (3100) from private CIDRs
   ingress {
     from_port   = 3100
     to_port     = 3100
@@ -198,4 +211,15 @@ data "aws_ami" "ubuntu" {
     name   = "state"
     values = ["available"]
   }
+}
+
+# OUTPUTS - Add these to expose the Loki IP
+output "loki_private_ip" {
+  value       = var.loki_enabled && length(aws_instance.loki_grafana) > 0 ? aws_instance.loki_grafana[0].private_ip : null
+  description = "Private IP address of the Loki instance"
+}
+
+output "loki_public_ip" {
+  value       = var.loki_enabled && length(aws_eip.loki_grafana) > 0 ? aws_eip.loki_grafana[0].public_ip : null
+  description = "Public IP address of the Loki instance for SSH access"
 }
