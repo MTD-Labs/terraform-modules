@@ -14,9 +14,18 @@ resource "aws_acm_certificate" "alb_certificate" {
   }
 }
 
-# Create DNS validation records in Cloudflare for ALB certificate
-resource "cloudflare_record" "alb_cert_validation" {
-  for_each = var.ecs_enabled ? {
+# Local variable to create a clean list of validation options with deduplication
+locals {
+  alb_cert_validation_options = var.ecs_enabled ? distinct([
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  ]) : []
+  
+  # Create a map to deduplicate by resource_record_name
+  alb_cert_validation_map = var.ecs_enabled ? {
     for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo.resource_record_name => {
       name   = dvo.resource_record_name
@@ -24,6 +33,11 @@ resource "cloudflare_record" "alb_cert_validation" {
       type   = dvo.resource_record_type
     }
   } : {}
+}
+
+# Create DNS validation records in Cloudflare for ALB certificate
+resource "cloudflare_record" "alb_cert_validation" {
+  for_each = local.alb_cert_validation_map
 
   zone_id = data.cloudflare_zone.main.id
   name    = each.value.name
@@ -55,9 +69,9 @@ resource "aws_acm_certificate" "cloudfront_certificate" {
   }
 }
 
-# Create DNS validation records in Cloudflare for CloudFront certificate
-resource "cloudflare_record" "cloudfront_cert_validation" {
-  for_each = var.cdn_enabled ? {
+# Local variable for CloudFront validation options with deduplication
+locals {
+  cloudfront_cert_validation_map = var.cdn_enabled ? {
     for dvo in aws_acm_certificate.cloudfront_certificate[0].domain_validation_options :
     dvo.resource_record_name => {
       name   = dvo.resource_record_name
@@ -65,6 +79,11 @@ resource "cloudflare_record" "cloudfront_cert_validation" {
       type   = dvo.resource_record_type
     }
   } : {}
+}
+
+# Create DNS validation records in Cloudflare for CloudFront certificate
+resource "cloudflare_record" "cloudfront_cert_validation" {
+  for_each = local.cloudfront_cert_validation_map
 
   zone_id = data.cloudflare_zone.main.id
   name    = each.value.name
