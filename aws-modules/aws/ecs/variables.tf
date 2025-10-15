@@ -240,3 +240,20 @@ variable "alb_security_group_id" {
    default = ""
 }
 
+variable "ami_owners" {
+  description = "AMI owners for Ubuntu"
+  type        = list(string)
+  default     = ["099720109477"] # Canonical
+}
+
+variable "ubuntu_ami_name_pattern" {
+  description = "AMI name pattern for Ubuntu 24.04"
+  type        = string
+  default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+}
+
+variable "loki_instance_arch" {
+  description = "Instance architecture"
+  type        = string
+  default     = "x86_64"
+}

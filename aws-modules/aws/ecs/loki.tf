@@ -28,7 +28,6 @@ resource "aws_instance" "loki_grafana" {
 }
 
 # Security group for Loki and Grafana
-# Security group for Loki and Grafana
 resource "aws_security_group" "loki_grafana" {
   count       = var.loki_enabled ? 1 : 0
   name        = "${var.cluster_name}-loki-grafana"
@@ -74,7 +73,6 @@ resource "aws_security_group_rule" "grafana_from_alb" {
   source_security_group_id = var.alb_security_group_id
   description              = "ALB Grafana 3000"
 }
-
 
 # Target group for Grafana
 resource "aws_alb_target_group" "grafana" {
@@ -158,20 +156,25 @@ resource "aws_iam_role_policy_attachment" "ecs_loki_logging" {
   policy_arn = aws_iam_policy.ecs_loki_logging[0].arn
 }
 
+# Data source for Ubuntu 24.04 LTS AMI
 data "aws_ami" "ubuntu" {
   count       = var.loki_enabled ? 1 : 0
-  owners      = var.ami_owners
   most_recent = true
+  owners      = ["099720109477"] # Canonical's AWS account ID
 
   filter {
-    name = "name"
-    # For Ubuntu 22.04 (Jammy)
-    values = [var.ubuntu_ami_name_pattern]
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
   }
 
   filter {
     name   = "architecture"
-    values = [var.loki_instance_arch]
+    values = ["x86_64"]
   }
 
   filter {
@@ -180,7 +183,7 @@ data "aws_ami" "ubuntu" {
   }
 
   filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
+    name   = "state"
+    values = ["available"]
   }
 }
