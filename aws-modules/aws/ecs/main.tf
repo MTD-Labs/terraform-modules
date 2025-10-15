@@ -1,5 +1,18 @@
 data "aws_caller_identity" "current" {}
 
+# Data source to check if Loki instance exists
+data "aws_instances" "loki" {
+  filter {
+    name   = "tag:Name"
+    values = ["${var.cluster_name}-loki-grafana"]
+  }
+  
+  filter {
+    name   = "instance-state-name"
+    values = ["running"]
+  }
+}
+
 locals {
   account_id = data.aws_caller_identity.current.account_id
 
@@ -12,9 +25,9 @@ locals {
   tags = merge({
     Name = var.cluster_name
   }, local.common_tags, var.tags)
-
-  # Add this local to safely handle Loki IP using try()
-  loki_host = var.loki_enabled ? try(aws_instance.loki_grafana[0].private_ip, "") : ""
+  
+  # Use the data source to get Loki IP
+  loki_host = var.loki_enabled && length(data.aws_instances.loki.private_ips) > 0 ? data.aws_instances.loki.private_ips[0] : ""
 }
 
 ### ECS CLUSTER
@@ -107,7 +120,7 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
         }
       ] : []
 
-      logConfiguration = var.loki_enabled ? {
+      logConfiguration = var.loki_enabled && local.loki_host != "" ? {
         logDriver = "awsfirelens"
         options = {
           "Name"              = "loki"

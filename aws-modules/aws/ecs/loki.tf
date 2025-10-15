@@ -74,6 +74,18 @@ resource "aws_security_group_rule" "grafana_from_alb" {
   description              = "ALB Grafana 3000"
 }
 
+resource "aws_security_group_rule" "loki_from_ecs_tasks" {
+  for_each = { for idx, container in var.containers : idx => container }
+  
+  type                     = "ingress"
+  from_port                = 3100
+  to_port                  = 3100
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.loki_grafana[0].id
+  source_security_group_id = aws_security_group.ecs[each.key].id
+  description              = "Loki access from ${each.value.name} ECS tasks"
+}
+
 # Target group for Grafana
 resource "aws_alb_target_group" "grafana" {
   count       = var.loki_enabled ? 1 : 0
