@@ -246,14 +246,8 @@ variable "ami_owners" {
   default     = ["099720109477"] # Canonical
 }
 
-variable "ubuntu_ami_name_pattern" {
+variable "ubuntu_ami_name_pattern_loki" {
   description = "AMI name pattern for Ubuntu 24.04"
   type        = string
   default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
-}
-
-variable "loki_instance_arch" {
-  description = "Instance architecture"
-  type        = string
-  default     = "x86_64"
 }
