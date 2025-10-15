@@ -827,3 +827,5 @@ variable "cloudflare_proxied" {
   description = "Whether to enable Cloudflare proxy (orange cloud)"
   default     = false
 }
+
+variable "alb_security_group_id" { type = string }

@@ -174,6 +174,8 @@ module "ecs" {
 
   ecs_platform_version = var.ecs_platform_version
 
+  alb_security_group_id = module.alb.alb_aws_security_group_id
+
 }
 
 module "postgres" {

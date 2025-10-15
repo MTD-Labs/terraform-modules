@@ -233,3 +233,5 @@ variable "ecs_platform_version" {
   type        = string
   default     = "1.4.0"
 }
+
+variable "alb_security_group_id" { type = string }

@@ -28,31 +28,29 @@ resource "aws_instance" "loki_grafana" {
 }
 
 # Security group for Loki and Grafana
+# Security group for Loki and Grafana
 resource "aws_security_group" "loki_grafana" {
   count       = var.loki_enabled ? 1 : 0
   name        = "${var.cluster_name}-loki-grafana"
   description = "Security group for Loki and Grafana EC2 instance"
   vpc_id      = var.vpc_id
 
-  ingress {
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = [var.alb_security_group]
-  }
-
+  # Allow Loki (3100) from private CIDRs (OK as CIDR lists)
   ingress {
     from_port   = 3100
     to_port     = 3100
     protocol    = "tcp"
     cidr_blocks = var.vpc_private_cidr_blocks
+    description = "Loki API from private CIDRs"
   }
 
+  # SSH (consider restricting to your office IPs)
   ingress {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "SSH"
   }
 
   egress {
@@ -62,10 +60,21 @@ resource "aws_security_group" "loki_grafana" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge({
-    Name = "${var.cluster_name}-loki-grafana"
-  }, local.common_tags)
+  tags = merge({ Name = "${var.cluster_name}-loki-grafana" }, local.common_tags)
 }
+
+# Allow ALB SG to reach Grafana (3000) via SG-to-SG rule
+resource "aws_security_group_rule" "grafana_from_alb" {
+  count                    = var.loki_enabled ? 1 : 0
+  type                     = "ingress"
+  from_port                = 3000
+  to_port                  = 3000
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.loki_grafana[0].id
+  source_security_group_id = var.alb_security_group_id
+  description              = "ALB -> Grafana 3000"
+}
+
 
 # Target group for Grafana
 resource "aws_alb_target_group" "grafana" {
