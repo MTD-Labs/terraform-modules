@@ -126,3 +126,15 @@ variable "subject_alternative_names" {
   type        = list(string)
   default     = []
 }
+
+variable "cloudflare_zone" {
+  type        = string
+  description = "Root zone in Cloudflare (e.g., trendex.my)"
+  default     = "trendex.my"
+}
+
+variable "cloudflare_proxied" {
+  type        = bool
+  description = "Whether to enable Cloudflare proxy (orange cloud)"
+  default     = false
+}

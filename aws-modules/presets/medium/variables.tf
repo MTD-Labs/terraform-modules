@@ -815,3 +815,15 @@ variable "ecs_platform_version" {
   type        = string
   default     = "1.4.0"
 }
+
+variable "cloudflare_zone" {
+  type        = string
+  description = "Root zone in Cloudflare (e.g., trendex.my)"
+  default     = "trendex.my"
+}
+
+variable "cloudflare_proxied" {
+  type        = bool
+  description = "Whether to enable Cloudflare proxy (orange cloud)"
+  default     = false
+}

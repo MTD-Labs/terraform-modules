@@ -8,6 +8,10 @@ terraform {
       version               = ">= 5.25.0"
       configuration_aliases = [aws.main, aws.us_east_1]
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 4.0"
+    }
   }
 }
 

@@ -116,6 +116,9 @@ module "alb" {
   lambda_security_group  = [module.alb.alb_aws_security_group_id]
 
   subject_alternative_names = var.subject_alternative_names
+
+  cloudflare_proxied         = var.cloudflare_proxied
+  cloudflare_zone            = var.cloudflare_zone
 }
 
 module "ecr" {
