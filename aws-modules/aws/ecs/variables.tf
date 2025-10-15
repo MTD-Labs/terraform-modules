@@ -57,10 +57,10 @@ variable "containers" {
     max_count            = number
     target_cpu_threshold = number
     target_mem_threshold = number
-    path                 = optional(list(string), [])
+    path                 = list(string)
     port                 = number
     service_domain       = string
-    priority             = optional(number)
+    priority             = number
     envs                 = map(string)
     secrets              = map(string)
     health_check         = map(string)
@@ -228,7 +228,6 @@ variable "efs_provisioned_throughput" {
   type        = number
   default     = null
 }
-
 variable "ecs_platform_version" {
   description = "ECS Platform Version"
   type        = string

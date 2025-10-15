@@ -1,42 +1,50 @@
 locals {
-  containers_map = { for i, container in var.containers : tostring(i) => container }
 
-  # keep only containers that actually have paths
-  load_balanced_container_keys = [
-    for i, container in local.containers_map :
-    i if length(try(container.path, [])) > 0
-  ]
-
-  # optional helper: only if you really need this list elsewhere
+  containers_map               = { for i, container in var.containers : tostring(i) => container }
+  load_balanced_container_keys = [for i, container in local.containers_map : i if container.path != ""]
   load_balanced_containers = flatten([
     for key, container in local.containers_map : [
-      for p in try(container.path, []) : {
+      for path in container.path : {
         name           = container.name
-        path           = p
+        path           = path
         port           = container.port
-        priority       = try(container.priority, null)
+        priority       = container.priority
         health_check   = container.health_check
-        service_domain = try(container.service_domain, "")
-        key            = key
-      } if length(p) > 0 && length(try(container.service_domain, "")) > 0
+        service_domain = container.service_domain
+        key            = key # Keep original key
+      } if length(path) > 0 && length(container.service_domain) > 0
     ]
   ])
 
-  load_balanced_container_keys_map = { for idx, _ in var.containers : idx => idx }
-}
+  # Ensure mapping aligns with the original container keys
+  load_balanced_container_keys_map = {
+    for idx, container in var.containers : idx => idx
+  }
 
+  ### compact() would be better, but it only works with list of strings, while we have list of objects
+  ### https://github.com/hashicorp/terraform/issues/28264
+  ### leaving this non-working code just for reference to understand what's going on in lines above
+  #
+  # load_balanced_containers = compact([
+  #   for container in var.containers :
+  #   container.path != "" ? {
+  #     name         = container.name
+  #     path         = container.path
+  #     port         = container.port
+  #     health_check = container.health_check
+  #   } : null
+  # ])
+}
 
 resource "aws_alb_listener_rule" "https_listener_rule" {
   for_each = {
     for idx, container in local.containers_map :
     idx => container
-    if length(try(container.path, [])) > 0
+    if length(container.path) > 0
   }
 
   listener_arn = var.alb_listener_arn
-
-  # Use provided priority if set; otherwise generate a stable fallback
-  priority = try(each.value.priority, 100 + tonumber(each.key))
+  priority     = each.value["priority"]
 
   action {
     type             = "forward"
@@ -50,7 +58,7 @@ resource "aws_alb_listener_rule" "https_listener_rule" {
   }
 
   dynamic "condition" {
-    for_each = length(try(each.value.service_domain, "")) > 0 ? [1] : []
+    for_each = length(each.value.service_domain) > 0 ? [1] : []
     content {
       host_header {
         values = [each.value.service_domain]
@@ -63,14 +71,14 @@ resource "aws_alb_listener_rule" "https_listener_rule" {
   }, local.common_tags)
 }
 
-
 resource "aws_alb_target_group" "service_target_group" {
   for_each = {
     for idx, container in local.containers_map :
     idx => container
-    if length(try(container.path, [])) > 0
+    if length(container.path) > 0
   }
 
+  # name                 = "${each.value["name"]}-${each.key}"
   name                 = each.value["name"]
   port                 = each.value["port"]
   protocol             = "HTTP"
@@ -79,7 +87,7 @@ resource "aws_alb_target_group" "service_target_group" {
   target_type          = "ip"
 
   dynamic "health_check" {
-    for_each = length(try(each.value.health_check, {})) == 0 ? [] : [1]
+    for_each = length(each.value.health_check) == 0 ? [] : [1]
     content {
       healthy_threshold   = lookup(each.value.health_check, "healthy_threshold", 2)
       unhealthy_threshold = lookup(each.value.health_check, "unhealthy_threshold", 2)
@@ -99,4 +107,5 @@ resource "aws_alb_target_group" "service_target_group" {
   lifecycle {
     create_before_destroy = true
   }
+
 }
