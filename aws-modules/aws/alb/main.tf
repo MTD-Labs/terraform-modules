@@ -136,17 +136,3 @@ resource "cloudflare_record" "alb_domain" {
     aws_acm_certificate_validation.alb_certificate
   ]
 }
-resource "cloudflare_record" "alb_domain" {
-  count   = var.ecs_enabled ? 1 : 0
-  zone_id = var.cloudflare_zone
-  name    = var.domain_name
-  value   = aws_alb.alb[0].dns_name
-  type    = "CNAME"
-  ttl     = 300
-  proxied = false  # Set to true if you want Cloudflare proxy/CDN in front of ALB
-  
-  depends_on = [
-    aws_alb.alb,
-    aws_acm_certificate_validation.alb_certificate
-  ]
-}
