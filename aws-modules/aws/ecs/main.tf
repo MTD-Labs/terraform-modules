@@ -13,8 +13,8 @@ locals {
     Name = var.cluster_name
   }, local.common_tags, var.tags)
 
-  # Add this local to safely handle Loki IP
-  loki_host = var.loki_enabled && length(aws_instance.loki_grafana) > 0 ? aws_instance.loki_grafana[0].private_ip : ""
+  # Add this local to safely handle Loki IP using try()
+  loki_host = var.loki_enabled ? try(aws_instance.loki_grafana[0].private_ip, "") : ""
 }
 
 ### ECS CLUSTER
@@ -43,8 +43,7 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
   cpu                      = each.value["cpu"]
   memory                   = each.value["memory"]
 
-  # Add explicit dependency on Loki instance when enabled
-  depends_on = var.loki_enabled ? [aws_instance.loki_grafana] : []
+  # Remove the depends_on since it doesn't support conditional expressions
 
   runtime_platform {
     operating_system_family = "LINUX"
