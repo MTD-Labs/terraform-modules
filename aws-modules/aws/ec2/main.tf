@@ -165,11 +165,13 @@ data "aws_secretsmanager_secret_version" "grafana-prod" {
 resource "null_resource" "copy_grafana_tree" {
   depends_on = [null_resource.wait_for_cloud_init]
   count      = var.grafana_enabled ? 1 : 0
+
   triggers = {
     # re-run whenever grafana files change or instance is replaced
     grafana_hash = local.grafana_hash
     instance_id  = aws_instance.bastion.id
-    version_id  = data.aws_secretsmanager_secret_version.grafana-prod.version_id
+    version_id   = data.aws_secretsmanager_secret_version.grafana-prod.version_id
+  }
 
   # Ensure destination exists
   provisioner "remote-exec" {
@@ -177,7 +179,7 @@ resource "null_resource" "copy_grafana_tree" {
       "sudo mkdir -p /app/grafana",
       "sudo chown -R ubuntu:ubuntu /app"
     ]
-
+    
     connection {
       type  = "ssh"
       user  = "ubuntu"
@@ -186,7 +188,7 @@ resource "null_resource" "copy_grafana_tree" {
     }
   }
 
-  # Copy the directory recursively (caddy/, docker-compose.yml, provisioning/, etc.)
+  # Copy the directory recursively
   provisioner "file" {
     source      = "${path.root}/templates/grafana"
     destination = "/app" # results in /app/grafana
@@ -198,11 +200,27 @@ resource "null_resource" "copy_grafana_tree" {
       agent = true
     }
   }
-  
+
+  # Copy .env file from secrets manager
   provisioner "file" {
     content     = data.aws_secretsmanager_secret_version.grafana-prod.secret_string
     destination = "/app/grafana/.env"
+    
+    connection {
+      type  = "ssh"
+      user  = "ubuntu"
+      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      agent = true
+    }
+  }
 
+  # Set proper permissions after copying
+  provisioner "remote-exec" {
+    inline = [
+      "chmod 600 /app/grafana/.env",
+      "sudo chown -R ubuntu:ubuntu /app/grafana"
+    ]
+    
     connection {
       type  = "ssh"
       user  = "ubuntu"
