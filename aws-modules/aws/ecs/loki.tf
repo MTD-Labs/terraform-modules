@@ -89,7 +89,7 @@ resource "aws_security_group_rule" "grafana_from_alb" {
 
 resource "aws_security_group_rule" "loki_from_ecs_tasks" {
   for_each = { for idx, container in var.containers : idx => container }
-
+  count                    = var.loki_enabled ? 1 : 0
   type                     = "ingress"
   from_port                = 3100
   to_port                  = 3100
