@@ -63,7 +63,7 @@ variable "ami" {
 variable "instance_type" {
   type        = string
   description = "Instance type for the created machine"
-  default     = "t4g.nano"
+  default     = "t3.micro"
 }
 
 variable "allowed_tcp_ports" {
