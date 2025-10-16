@@ -91,6 +91,8 @@ resource "aws_instance" "bastion" {
     "${path.module}/templates/user-data.txt",
     {
       ssh_authorized_keys = base64encode(data.aws_ssm_parameter.ssh_authorized_keys.value)
+      AWS_DEFAULT_REGION  = var.region
+      AWS_ECR_ROOT        = "${var.ecr_user_id}.dkr.ecr.${var.region}.amazonaws.com"
     }
   )
 

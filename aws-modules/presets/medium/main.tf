@@ -279,6 +279,7 @@ module "ec2" {
 
   grafana_enabled = var.grafana_enabled
   grafana_domain  = var.grafana_domain
+  ecr_user_id     = var.ecr_user_id
 
 }
 

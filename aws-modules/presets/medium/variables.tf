@@ -845,3 +845,8 @@ variable "grafana_domain" {
   description = "Grafana Domain Grafana"
   default     = ""
 }
+
+variable "ecr_user_id" {
+  type    = string
+  default = ""
+}
