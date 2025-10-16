@@ -41,7 +41,7 @@ resource "aws_ecs_cluster" "cluster" {
 
 resource "aws_cloudwatch_log_group" "container" {
   for_each          = { for idx, c in var.containers : idx => c }
-  name              = "${var.env}-${each.value.name}"
+  name              = "${each.value.name}"
   retention_in_days = 14
   tags              = local.tags
 }
