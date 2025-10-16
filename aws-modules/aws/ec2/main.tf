@@ -154,6 +154,11 @@ resource "null_resource" "wait_for_cloud_init" {
   ]
 }
 
+
+data "aws_secretsmanager_secret_version" "grafana-prod" {
+  secret_id = "grafana-${var.env}"
+}
+
 ############################################
 # 📦 Copy templates/grafana → /app/grafana
 ############################################
@@ -164,7 +169,7 @@ resource "null_resource" "copy_grafana_tree" {
     # re-run whenever grafana files change or instance is replaced
     grafana_hash = local.grafana_hash
     instance_id  = aws_instance.bastion.id
-  }
+    version_id  = data.aws_secretsmanager_secret_version.grafana-prod.version_id
 
   # Ensure destination exists
   provisioner "remote-exec" {
@@ -185,6 +190,18 @@ resource "null_resource" "copy_grafana_tree" {
   provisioner "file" {
     source      = "${path.root}/templates/grafana"
     destination = "/app" # results in /app/grafana
+
+    connection {
+      type  = "ssh"
+      user  = "ubuntu"
+      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      agent = true
+    }
+  }
+  
+  provisioner "file" {
+    content     = data.aws_secretsmanager_secret_version.grafana-prod.secret_string
+    destination = "/app/grafana/.env"
 
     connection {
       type  = "ssh"

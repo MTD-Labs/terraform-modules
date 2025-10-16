@@ -102,7 +102,6 @@ data "aws_secretsmanager_secret_version" "services_env" {
 
 data "aws_secretsmanager_secret_version" "cloudflare_token" {
   secret_id = "${var.env}-${var.name}-cloudflare-token"
-  # secret_id = "dev-legally-cloudflare-token"
 }
 
 resource "aws_eip" "eip" {
