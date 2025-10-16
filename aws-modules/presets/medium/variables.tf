@@ -491,12 +491,6 @@ variable "loki_enabled" {
   description = "Whether to enable Loki logging for ECS tasks"
 }
 
-variable "grafana_domain" {
-  type        = string
-  default     = "grafana.example.com"
-  description = "Domain name for Grafana (required if loki_enabled is true)"
-}
-
 variable "loki_ec2_instance_type" {
   type        = string
   default     = "t3.medium"
