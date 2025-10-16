@@ -117,8 +117,8 @@ module "alb" {
 
   subject_alternative_names = var.subject_alternative_names
 
-  cloudflare_proxied         = var.cloudflare_proxied
-  cloudflare_zone            = var.cloudflare_zone
+  cloudflare_proxied = var.cloudflare_proxied
+  cloudflare_zone    = var.cloudflare_zone
 }
 
 module "ecr" {
@@ -277,6 +277,9 @@ module "ec2" {
   ssh_authorized_keys_secret = var.bastion_ssh_authorized_keys_secret
   allowed_tcp_ports          = ["22"]
 
+  grafana_enabled = var.grafana_enabled
+  grafana_domain  = var.grafana_domain
+
 }
 
 module "s3" {
@@ -334,10 +337,10 @@ module "webhook" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  aws_region                 = var.region
-  environment                = var.env
-  project_name               = var.name
-  tags                       = var.tags
+  aws_region   = var.region
+  environment  = var.env
+  project_name = var.name
+  tags         = var.tags
 
   webhook_path_prefix    = var.webhook_path_prefix
   api_stage_name         = var.env

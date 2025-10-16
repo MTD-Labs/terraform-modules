@@ -102,8 +102,8 @@ module "ec2" {
   instance_arch              = var.instance_arch
   services_list              = var.services_list
 
-  cloudflare_proxied         = var.cloudflare_proxied
-  cloudflare_zone            = var.cloudflare_zone
+  cloudflare_proxied = var.cloudflare_proxied
+  cloudflare_zone    = var.cloudflare_zone
 }
 
 module "s3" {

@@ -142,7 +142,7 @@ resource "cloudflare_record" "alb_domain" {
 # Create CNAME records for all subject alternative names
 resource "cloudflare_record" "alb_san_domains" {
   for_each = var.ecs_enabled ? toset(var.subject_alternative_names) : []
-  
+
   zone_id = data.cloudflare_zone.main.id
   name    = each.value
   content = aws_alb.alb[0].dns_name

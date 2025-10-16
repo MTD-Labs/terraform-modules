@@ -20,7 +20,7 @@ resource "random_password" "admin_password" {
   special          = true
   min_special      = 5
   override_special = "!#$%^&*()-_=+[]{}<>:?"
-  keepers = { pass_version = 1 }
+  keepers          = { pass_version = 1 }
 }
 
 resource "random_password" "user_password" {
@@ -29,7 +29,7 @@ resource "random_password" "user_password" {
   special          = true
   min_special      = 5
   override_special = "!#$%^&*()-_=+[]{}<>:?"
-  keepers = { pass_version = 1 }
+  keepers          = { pass_version = 1 }
 }
 
 resource "aws_ssm_parameter" "admin_password" {
@@ -85,11 +85,11 @@ resource "aws_security_group" "mq_security_group" {
 # --- Amazon MQ Broker (RabbitMQ) ---
 resource "aws_mq_broker" "amazon_mq" {
   broker_name                = local.name
-  engine_type                = var.engine_type            # must be "RabbitMQ"
-  engine_version             = var.engine_version         # e.g., "3.13.2" if supported in your region
+  engine_type                = var.engine_type    # must be "RabbitMQ"
+  engine_version             = var.engine_version # e.g., "3.13.2" if supported in your region
   host_instance_type         = var.instance_type
   auto_minor_version_upgrade = var.auto_minor_version_upgrade
-  deployment_mode            = var.deployment_mode        # e.g., "SINGLE_INSTANCE" or "CLUSTER_MULTI_AZ"
+  deployment_mode            = var.deployment_mode # e.g., "SINGLE_INSTANCE" or "CLUSTER_MULTI_AZ"
   publicly_accessible        = false
   security_groups            = [aws_security_group.mq_security_group.id]
 

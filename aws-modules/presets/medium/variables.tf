@@ -829,13 +829,25 @@ variable "cloudflare_proxied" {
 }
 
 variable "alb_security_group_id" {
-   type = string
-   description = "ALB SG ID to Allow Loki"
-   default = ""
+  type        = string
+  description = "ALB SG ID to Allow Loki"
+  default     = ""
 }
 
 variable "loki_instance_arch" {
-   type = string
-   description = "Loki Instance Arch"
-   default = "x86_64"
+  type        = string
+  description = "Loki Instance Arch"
+  default     = "x86_64"
+}
+
+variable "grafana_enabled" {
+  type        = bool
+  description = "Enable Grafana"
+  default     = true
+}
+
+variable "grafana_domain" {
+  type        = string
+  description = "Grafana Domain Grafana"
+  default     = ""
 }

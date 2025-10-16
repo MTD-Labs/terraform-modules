@@ -94,19 +94,19 @@ module "rds" {
   iam_database_authentication_enabled = false
   username                            = var.master_username
   # password                            = random_password.master.result
-  password                            = "RUy7kB41W993jlPmXSmW"
-  manage_master_user_password         = false
-  db_name                             = var.database_name
-  storage_encrypted                   = true
-  apply_immediately                   = false
-  skip_final_snapshot                 = false
-  create_db_parameter_group           = false
-  parameter_group_name                = aws_db_parameter_group.db.name
-  backup_retention_period             = var.backup_retention_period
-  maintenance_window                  = var.preferred_maintenance_window
-  backup_window                       = var.preferred_backup_window
-  enabled_cloudwatch_logs_exports     = ["postgresql"]
-  copy_tags_to_snapshot               = true
+  password                        = "RUy7kB41W993jlPmXSmW"
+  manage_master_user_password     = false
+  db_name                         = var.database_name
+  storage_encrypted               = true
+  apply_immediately               = false
+  skip_final_snapshot             = false
+  create_db_parameter_group       = false
+  parameter_group_name            = aws_db_parameter_group.db.name
+  backup_retention_period         = var.backup_retention_period
+  maintenance_window              = var.preferred_maintenance_window
+  backup_window                   = var.preferred_backup_window
+  enabled_cloudwatch_logs_exports = ["postgresql"]
+  copy_tags_to_snapshot           = true
 
   tags = local.tags
 }

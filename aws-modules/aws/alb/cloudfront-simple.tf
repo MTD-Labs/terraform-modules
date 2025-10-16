@@ -14,7 +14,7 @@ resource "aws_cloudfront_distribution" "default" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = element(var.cdn_buckets, length(var.cdn_buckets)-1).name
+    target_origin_id       = element(var.cdn_buckets, length(var.cdn_buckets) - 1).name
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
@@ -99,7 +99,7 @@ resource "cloudflare_record" "cloudfront_domain" {
   type    = "CNAME"
   ttl     = 300
   proxied = false
-  
+
   depends_on = [
     aws_cloudfront_distribution.default,
     aws_acm_certificate_validation.cloudfront_certificate

@@ -251,7 +251,7 @@ resource "null_resource" "service_env_files" {
   depends_on = [null_resource.wait_for_cloud_init]
 
   triggers = {
-    version_id = each.value.version_id
+    version_id  = each.value.version_id
     instance_id = aws_instance.bastion.id
   }
 
@@ -273,19 +273,19 @@ resource "null_resource" "dev_provisioning" {
   depends_on = [null_resource.wait_for_cloud_init, null_resource.service_env_files]
   triggers = {
     # Force recreation when any of these files change
-    docker_compose_hash      = filesha256("${path.root}/templates/docker-compose.yml")
-    nginx_conf_hash          = filesha256("${path.root}/templates/nginx.conf")
-    cloudflare_token         = data.aws_secretsmanager_secret_version.cloudflare_token.version_id
-    nginx_dockerfile         = filesha256("${path.root}/templates/Dockerfile.nginx")
-    loki_config              = filesha256("${path.root}/templates/loki-config.yml")
-    promtail_config          = filesha256("${path.root}/templates/promtail-config.yml")
-    grafana_loki_source      = filesha256("${path.root}/templates/grafana-provisioning/datasources/loki.yml")
-    
+    docker_compose_hash = filesha256("${path.root}/templates/docker-compose.yml")
+    nginx_conf_hash     = filesha256("${path.root}/templates/nginx.conf")
+    cloudflare_token    = data.aws_secretsmanager_secret_version.cloudflare_token.version_id
+    nginx_dockerfile    = filesha256("${path.root}/templates/Dockerfile.nginx")
+    loki_config         = filesha256("${path.root}/templates/loki-config.yml")
+    promtail_config     = filesha256("${path.root}/templates/promtail-config.yml")
+    grafana_loki_source = filesha256("${path.root}/templates/grafana-provisioning/datasources/loki.yml")
+
     # Add this to force recreation when env files change
-    env_files_version        = join(",", [for k, v in data.aws_secretsmanager_secret_version.services_env : v.version_id])
-    
+    env_files_version = join(",", [for k, v in data.aws_secretsmanager_secret_version.services_env : v.version_id])
+
     # Add instance ID to ensure recreation if instance is replaced
-    instance_id              = aws_instance.bastion.id
+    instance_id = aws_instance.bastion.id
   }
 
   provisioner "file" {
@@ -414,7 +414,7 @@ resource "cloudflare_record" "stage_a" {
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
-  depends_on = [aws_instance.bastion]
+  depends_on      = [aws_instance.bastion]
 }
 
 resource "cloudflare_record" "stage_wildcard_a" {
@@ -425,5 +425,5 @@ resource "cloudflare_record" "stage_wildcard_a" {
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
-  depends_on = [aws_instance.bastion]
+  depends_on      = [aws_instance.bastion]
 }

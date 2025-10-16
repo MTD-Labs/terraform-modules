@@ -6,6 +6,12 @@ locals {
     tf-module  = "aws/ec2"
   }, var.tags)
   name = "${var.env}-${var.name}"
+
+  # Hash for the whole grafana dir so changes trigger re-provision
+  grafana_files = fileset("${path.root}/templates/grafana", "**")
+  grafana_hash = sha1(join(",", [
+    for f in local.grafana_files : filesha256("${path.root}/templates/grafana/${f}")
+  ]))
 }
 
 data "aws_ami" "ami" {
@@ -48,7 +54,7 @@ resource "aws_network_interface" "public" {
   )
 }
 
-# Create EC2 instance - using the deprecated but functional approach
+# Create EC2 instance
 resource "aws_instance" "bastion" {
   ami               = data.aws_ami.ami.id
   ebs_optimized     = true
@@ -111,4 +117,107 @@ resource "aws_eip_association" "eip_assoc" {
   network_interface_id = aws_network_interface.public[0].id
 
   depends_on = [aws_instance.bastion]
+}
+
+############################################
+# ⏳ Wait for cloud-init (so SSH is ready)
+############################################
+resource "null_resource" "wait_for_cloud_init" {
+  # Use instance id to force re-run when instance is replaced
+  count = var.grafana_enabled ? 1 : 0
+  triggers = {
+    instance_id = aws_instance.bastion.id
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      # Wait until cloud-init finishes processing user-data
+      "cloud-init status --wait"
+    ]
+
+    connection {
+      type = "ssh"
+      user = "ubuntu"
+      host = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      # Use your local SSH agent for the private key that matches the public key you inject
+      agent = true
+      # If you prefer passing a key directly, use:
+      # private_key = file(var.path_to_private_key)
+    }
+  }
+
+  depends_on = [
+    aws_instance.bastion,
+    aws_eip_association.eip_assoc
+  ]
+}
+
+############################################
+# 📦 Copy templates/grafana → /app/grafana
+############################################
+resource "null_resource" "copy_grafana_tree" {
+  depends_on = [null_resource.wait_for_cloud_init]
+  count      = var.grafana_enabled ? 1 : 0
+  triggers = {
+    # re-run whenever grafana files change or instance is replaced
+    grafana_hash = local.grafana_hash
+    instance_id  = aws_instance.bastion.id
+  }
+
+  # Ensure destination exists
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mkdir -p /app/grafana",
+      "sudo chown -R ubuntu:ubuntu /app"
+    ]
+
+    connection {
+      type  = "ssh"
+      user  = "ubuntu"
+      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      agent = true
+    }
+  }
+
+  # Copy the directory recursively (caddy/, docker-compose.yml, provisioning/, etc.)
+  provisioner "file" {
+    source      = "${path.root}/templates/grafana"
+    destination = "/app" # results in /app/grafana
+
+    connection {
+      type  = "ssh"
+      user  = "ubuntu"
+      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      agent = true
+    }
+  }
+}
+
+############################################
+# 🐳 Compose up (in /app/grafana)
+############################################
+resource "null_resource" "grafana_compose_up" {
+  depends_on = [null_resource.copy_grafana_tree]
+  count      = var.grafana_enabled ? 1 : 0
+  triggers = {
+    grafana_hash = local.grafana_hash
+    instance_id  = aws_instance.bastion.id
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      # Optional: login to a registry if needed
+      # "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_user_id}.dkr.ecr.${var.region}.amazonaws.com",
+
+      "cd /app/grafana && docker compose pull",
+      "cd /app/grafana && docker compose up -d --remove-orphans"
+    ]
+
+    connection {
+      type  = "ssh"
+      user  = "ubuntu"
+      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      agent = true
+    }
+  }
 }

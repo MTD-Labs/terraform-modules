@@ -51,8 +51,8 @@ data "external" "update_env" {
 
 resource "local_file" "env_file" {
   count      = local.env_file ? 1 : 0
-  content  = data.external.update_env.result["result"]
-  filename = var.env_file
+  content    = data.external.update_env.result["result"]
+  filename   = var.env_file
   depends_on = [resource.null_resource.clone_repo]
 }
 

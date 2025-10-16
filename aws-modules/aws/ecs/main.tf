@@ -6,7 +6,7 @@ data "aws_instances" "loki" {
     name   = "tag:Name"
     values = ["${var.cluster_name}-loki-grafana"]
   }
-  
+
   filter {
     name   = "instance-state-name"
     values = ["running"]
@@ -25,7 +25,7 @@ locals {
   tags = merge({
     Name = var.cluster_name
   }, local.common_tags, var.tags)
-  
+
   # Use the data source to get Loki IP
   loki_host = var.loki_enabled && length(data.aws_instances.loki.private_ips) > 0 ? data.aws_instances.loki.private_ips[0] : ""
 }
@@ -123,13 +123,13 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
       logConfiguration = var.loki_enabled && local.loki_host != "" ? {
         logDriver = "awsfirelens"
         options = {
-          "Name"              = "loki"
-          "Host"              = local.loki_host
-          "Port"              = "3100"
-          "Labels"            = "{job=\\\"${container["name"]}\\\"}"
-          "LabelKeys"         = "container_name,ecs_task_definition,source,ecs_cluster"
-          "RemoveKeys"        = "container_id,ecs_task_arn"
-          "LineFormat"        = "key_value"
+          "Name"       = "loki"
+          "Host"       = local.loki_host
+          "Port"       = "3100"
+          "Labels"     = "{job=\\\"${container["name"]}\\\"}"
+          "LabelKeys"  = "container_name,ecs_task_definition,source,ecs_cluster"
+          "RemoveKeys" = "container_id,ecs_task_arn"
+          "LineFormat" = "key_value"
         }
         } : {
         logDriver = "awslogs"

@@ -89,7 +89,7 @@ resource "aws_security_group_rule" "grafana_from_alb" {
 
 resource "aws_security_group_rule" "loki_from_ecs_tasks" {
   for_each = { for idx, container in var.containers : idx => container }
-  
+
   type                     = "ingress"
   from_port                = 3100
   to_port                  = 3100
@@ -214,12 +214,12 @@ data "aws_ami" "ubuntu" {
 }
 
 # OUTPUTS - Add these to expose the Loki IP
-output "loki_private_ip" {
-  value       = var.loki_enabled && length(aws_instance.loki_grafana) > 0 ? aws_instance.loki_grafana[0].private_ip : null
-  description = "Private IP address of the Loki instance"
-}
+# output "loki_private_ip" {
+#   value       = var.loki_enabled && length(aws_instance.loki_grafana) > 0 ? aws_instance.loki_grafana[0].private_ip : null
+#   description = "Private IP address of the Loki instance"
+# }
 
-output "loki_public_ip" {
-  value       = var.loki_enabled && length(aws_eip.loki_grafana) > 0 ? aws_eip.loki_grafana[0].public_ip : null
-  description = "Public IP address of the Loki instance for SSH access"
-}
+# output "loki_public_ip" {
+#   value       = var.loki_enabled && length(aws_eip.loki_grafana) > 0 ? aws_eip.loki_grafana[0].public_ip : null
+#   description = "Public IP address of the Loki instance for SSH access"
+# }

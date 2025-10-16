@@ -88,3 +88,15 @@ variable "ssh_authorized_keys_secret" {
   description = "Parameter store secret key with SSH authorized keys file content"
   type        = string
 }
+
+variable "grafana_enabled" {
+  type        = bool
+  description = "Enable Grafana"
+  default     = true
+}
+
+variable "grafana_domain" {
+  type        = string
+  description = "Grafana Domain Grafana"
+  default     = ""
+}

@@ -8,7 +8,7 @@ resource "aws_acm_certificate" "alb_certificate" {
   provider                  = aws.main
   validation_method         = "DNS"
   tags                      = local.tags
-  
+
   lifecycle {
     create_before_destroy = true
   }
@@ -28,32 +28,32 @@ resource "cloudflare_record" "alb_cert_validation" {
   for_each = local.alb_domains_for_validation
 
   zone_id = data.cloudflare_zone.main.id
-  
+
   # Find the validation options for this domain
   name = length([
-    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo if dvo.domain_name == each.key
-  ]) > 0 ? [
-    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    ]) > 0 ? [
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo.resource_record_name if dvo.domain_name == each.key
   ][0] : ""
-  
+
   content = length([
-    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo if dvo.domain_name == each.key
-  ]) > 0 ? [
-    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    ]) > 0 ? [
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo.resource_record_value if dvo.domain_name == each.key
   ][0] : ""
-  
+
   type = length([
-    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo if dvo.domain_name == each.key
-  ]) > 0 ? [
-    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options : 
+    ]) > 0 ? [
+    for dvo in aws_acm_certificate.alb_certificate[0].domain_validation_options :
     dvo.resource_record_type if dvo.domain_name == each.key
   ][0] : ""
-  
+
   ttl     = 60
   proxied = false
 }
@@ -74,7 +74,7 @@ resource "aws_acm_certificate" "cloudfront_certificate" {
   domain_name       = var.cdn_domain_name
   validation_method = "DNS"
   tags              = local.tags
-  
+
   lifecycle {
     create_before_destroy = true
   }

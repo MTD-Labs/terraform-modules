@@ -94,9 +94,9 @@ variable "containers" {
       }
       volumes = [
         {
-          name                        = "web-container-efs-storage"
-          container_path              = "/opt/web-container-data"
-          read_only                   = false
+          name           = "web-container-efs-storage"
+          container_path = "/opt/web-container-data"
+          read_only      = false
         }
       ]
     },
@@ -123,9 +123,9 @@ variable "containers" {
       }
       volumes = [
         {
-          name                        = "api-container-efs-storage"
-          container_path              = "/opt/api-container-data"
-          read_only                   = false
+          name           = "api-container-efs-storage"
+          container_path = "/opt/api-container-data"
+          read_only      = false
         }
       ]
     }
@@ -235,9 +235,9 @@ variable "ecs_platform_version" {
 }
 
 variable "alb_security_group_id" {
-   type = string
-   description = "ALB SG ID to Allow Loki"
-   default = ""
+  type        = string
+  description = "ALB SG ID to Allow Loki"
+  default     = ""
 }
 
 variable "ubuntu_ami_name_pattern_loki" {

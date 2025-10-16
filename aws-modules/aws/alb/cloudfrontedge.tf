@@ -14,7 +14,7 @@ resource "aws_cloudfront_distribution" "default_edge" {
   default_cache_behavior {
     allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods         = ["GET", "HEAD", "OPTIONS"]
-    target_origin_id       = element(var.cdn_buckets, length(var.cdn_buckets)-1).name
+    target_origin_id       = element(var.cdn_buckets, length(var.cdn_buckets) - 1).name
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600

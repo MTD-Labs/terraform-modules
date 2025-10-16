@@ -1,5 +1,28 @@
 #!/bin/bash
 
+exec > >(tee /var/log/my-user-data.log) 2>&1
+
+echo "=== Starting user-data at $(date) ==="
+
+# Wait for instance metadata and AWS CLI setup
+apt-get update && apt-get install -y jq unzip
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install --update
+
+TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id)
+REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/region)
+
+# Find the device attached to the volume tagged as "Role: AdditionalDisk"
+VOLUME_ID=$(aws ec2 describe-volumes --region "$REGION" \
+  --filters "Name=attachment.instance-id,Values=$INSTANCE_ID" "Name=tag:Role,Values=AdditionalDisk" \
+  --query "Volumes[0].VolumeId" --output text)
+
+mkdir -p /app
+sudo chown -R ubuntu:ubuntu /app
+
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update && \
@@ -18,24 +41,33 @@ apt-get install -y \
   net-tools \
   socat \
   jq \
-  expect \
-  awscli
+  expect
 
-# install docker
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-add-apt-repository -y \
-   "deb [arch=arm64] https://download.docker.com/linux/ubuntu \
-   $(lsb_release -cs) \
-   stable"
-
+# Install Docker
 apt-get update
-apt-get install -y docker-ce
+apt-get install -y ca-certificates curl
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 usermod -aG docker ubuntu
 
 ufw disable # use security groups
-apt-get remove ec2-instance-connect # use direct ssh keys management
+apt-get remove -y ec2-instance-connect # use direct ssh keys management
 
 rm -rf /var/lib/apt/lists/*
 
 echo "${ssh_authorized_keys}" | base64 -d >> /home/ubuntu/.ssh/authorized_keys
 
+# Environment variables
+echo "export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}" >> /etc/environment
+echo "export AWS_ECR_ROOT=${AWS_ECR_ROOT}" >> /etc/environment
+export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+export AWS_ECR_ROOT=${AWS_ECR_ROOT}
