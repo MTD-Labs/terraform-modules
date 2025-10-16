@@ -156,7 +156,7 @@ resource "null_resource" "wait_for_cloud_init" {
 
 
 data "aws_secretsmanager_secret_version" "grafana-prod" {
-  secret_id = "grafana-${var.env}"
+  secret_id = "${var.env}-grafana-env"
 }
 
 ############################################
