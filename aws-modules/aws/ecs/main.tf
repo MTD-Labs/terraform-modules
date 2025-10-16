@@ -37,14 +37,16 @@ resource "aws_ecs_cluster" "cluster" {
   tags = local.tags
 }
 
-### ECS TASKS
+### PER-TASK CLOUDWATCH LOG GROUPS (env-container_name, 14 days)
 
-resource "aws_cloudwatch_log_group" "log_group" {
-  name              = var.cluster_name
-  retention_in_days = 30
-
-  tags = local.tags
+resource "aws_cloudwatch_log_group" "container" {
+  for_each          = { for idx, c in var.containers : idx => c }
+  name              = "${var.env}-${each.value.name}"
+  retention_in_days = 14
+  tags              = local.tags
 }
+
+### ECS TASKS
 
 resource "aws_ecs_task_definition" "container_task_definitions" {
   for_each                 = { for idx, container in var.containers : idx => container }
@@ -55,8 +57,6 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
   task_role_arn            = aws_iam_role.task_role.arn
   cpu                      = each.value["cpu"]
   memory                   = each.value["memory"]
-
-  # Remove the depends_on since it doesn't support conditional expressions
 
   runtime_platform {
     operating_system_family = "LINUX"
@@ -120,6 +120,8 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
         }
       ] : []
 
+      # If Loki is enabled and host is known, send app logs to FireLens (Loki).
+      # Otherwise, use per-task CloudWatch log group (env-container_name).
       logConfiguration = var.loki_enabled && local.loki_host != "" ? {
         logDriver = "awsfirelens"
         options = {
@@ -131,10 +133,10 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
           "RemoveKeys" = "container_id,ecs_task_arn"
           "LineFormat" = "key_value"
         }
-        } : {
+      } : {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.log_group.name
+          "awslogs-group"         = aws_cloudwatch_log_group.container[each.key].name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = container["name"]
         }
@@ -150,10 +152,11 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
           "enable-ecs-log-metadata" = "true"
         }
       }
+      # FireLens sidecar logs go to the same per-task log group
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.log_group.name
+          "awslogs-group"         = aws_cloudwatch_log_group.container[each.key].name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "firelens"
         }
@@ -201,9 +204,9 @@ resource "aws_ecs_service" "container_service" {
   launch_type                        = "FARGATE"
   enable_execute_command             = true
   force_new_deployment               = true
+
   dynamic "load_balancer" {
     for_each = length(each.value.path) == 0 ? [] : [for path in each.value.path : path]
-
     content {
       target_group_arn = aws_alb_target_group.service_target_group[each.key].arn
       container_name   = each.value["name"]
@@ -223,7 +226,6 @@ resource "aws_ecs_service" "container_service" {
   lifecycle {
     ignore_changes = [desired_count]
   }
-
 }
 
 resource "aws_security_group" "ecs" {
@@ -356,7 +358,6 @@ resource "aws_iam_role_policy_attachment" "ecs_task_ssm_core" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-
 resource "aws_iam_role" "task_role" {
   name = "${var.cluster_name}-task-role"
 
@@ -438,7 +439,6 @@ resource "aws_iam_role_policy_attachment" "ecr_pull_assume_role" {
   role       = aws_iam_role.exec_role.name
   policy_arn = aws_iam_policy.ssm_get_policy.arn
 }
-
 
 resource "aws_vpc_endpoint" "ssm_messages" {
   vpc_id              = var.vpc_id
