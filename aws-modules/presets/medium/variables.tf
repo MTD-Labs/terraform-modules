@@ -921,3 +921,9 @@ variable "grafana_host" {
   type        = string
   default     = ""
 }
+
+variable "tenant_id" {
+  description = "Grafana Host"
+  type        = string
+  default     = ""
+}

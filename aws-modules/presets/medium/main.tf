@@ -506,6 +506,8 @@ module "promtail" {
   cluster_endpoint   = module.eks[0].cluster_endpoint
   cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/promtail"
+
+  tenant_id =        var.tenant_id
 }
 
 module "loki" {
@@ -524,6 +526,17 @@ module "loki" {
   cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/loki"
   cluster_oidc_id    = module.eks[0].cluster_oidc_id
+}
+
+module "metric-server" {
+  source = "../../aws/monitoring/metric-server"
+  count  = var.eks_enabled == true ? 1 : 0
+  providers = {
+    helm          = helm.eks
+    kubernetes    = kubernetes.eks
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
