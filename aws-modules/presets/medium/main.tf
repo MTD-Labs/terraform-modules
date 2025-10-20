@@ -403,6 +403,59 @@ module "mq" {
   extra_allowed_cidr_blocks     = var.mq_extra_allowed_cidr_blocks
 }
 
+provider "kubernetes" {
+  alias                  = "eks"
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+  }
+}
+
+
+module "eks" {
+  source = "../../aws/eks"
+
+  providers = {
+    aws = aws.main
+  }
+
+  region                    = var.region
+  env                       = var.env
+  tags                      = var.tags
+  cluster_name              = var.eks_cluster_name
+  vpc_id                    = module.vpc.vpc_id
+  vpc_subnets               = module.vpc.private_subnets
+  vpc_private_cidr_blocks   = module.vpc.private_subnets_cidr_blocks
+  kubernetes_version        = var.kubernetes_version
+  instance_types            = var.eks_instance_types
+  node_desired_size         = var.eks_node_desired_size
+  node_min_size             = var.eks_node_min_size
+  node_max_size             = var.eks_node_max_size
+  service_ipv4_cidr         = var.eks_service_ipv4_cidr
+  endpoint_private          = var.eks_endpoint_private
+  endpoint_public           = var.eks_endpoint_public
+  enabled_logs              = var.eks_enabled_logs
+}
+
+module "ingress" {
+  source = "../../aws/ingress-controller"
+
+  providers = {
+    kubernetes = kubernetes.eks
+  }
+
+  env                = var.env
+  cluster_name       = module.eks.cluster_name
+  cluster_endpoint   = module.eks.cluster_endpoint
+  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  values_file_path   = "${path.root}/../../aws/ingress-controller/helm-chart"
+  subnets            = module.vpc.private_subnets
+  security_groups    = [module.eks.cluster_security_group_id]
+  domain_name        = var.domain_name
+}
 
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {

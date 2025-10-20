@@ -850,3 +850,68 @@ variable "ecr_user_id" {
   type    = string
   default = ""
 }
+
+variable "eks_enabled" {
+  description = "Enable EKS module"
+  type        = bool
+  default     = false
+}
+
+variable "eks_cluster_name" {
+  description = "EKS cluster name"
+  type        = string
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes version to use"
+  type        = string
+  default     = "1.29"
+}
+
+variable "eks_instance_types" {
+  description = "EC2 instance types for EKS node group"
+  type        = list(string)
+  default     = ["t3.medium"]
+}
+
+variable "eks_node_desired_size" {
+  description = "Desired node count"
+  type        = number
+  default     = 2
+}
+
+variable "eks_node_min_size" {
+  description = "Min node count"
+  type        = number
+  default     = 1
+}
+
+variable "eks_node_max_size" {
+  description = "Max node count"
+  type        = number
+  default     = 5
+}
+
+variable "eks_service_ipv4_cidr" {
+  description = "Service CIDR for EKS"
+  type        = string
+  default     = "172.20.0.0/16"
+}
+
+variable "eks_endpoint_private" {
+  description = "Enable private endpoint access for EKS"
+  type        = bool
+  default     = true
+}
+
+variable "eks_endpoint_public" {
+  description = "Enable public endpoint access for EKS"
+  type        = bool
+  default     = true
+}
+
+variable "eks_enabled_logs" {
+  description = "Control plane logs to enable"
+  type        = list(string)
+  default     = ["api", "audit", "authenticator"]
+}
