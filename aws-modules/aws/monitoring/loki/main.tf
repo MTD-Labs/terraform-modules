@@ -74,10 +74,12 @@ resource "helm_release" "loki" {
     region = var.region
   })]
 
-  set = {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = aws_iam_role.loki_role.arn
-  }
+  set = [
+    {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = aws_iam_role.loki_role.arn
+    }
+  ]
 
   depends_on = [data.archive_file.loki_values]
 
