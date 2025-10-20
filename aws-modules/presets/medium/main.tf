@@ -405,24 +405,24 @@ module "mq" {
 
 provider "kubernetes" {
   alias                  = "eks"
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  host                   = module.eks[0].cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
     command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    args        = ["eks", "get-token", "--cluster-name", module.eks[0].cluster_name]
   }
 }
 
 provider "helm" {
   alias = "eks"
   kubernetes = {
-    host                   = module.eks.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+    host                   = module.eks[0].cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
     exec = {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--output=json"]
+      args        = ["eks", "get-token", "--cluster-name", module.eks[0].cluster_name, "--output=json"]
     }
   }
 }
@@ -463,12 +463,12 @@ module "ingress" {
   }
 
   env                = var.env
-  cluster_name       = module.eks.cluster_name
-  cluster_endpoint   = module.eks.cluster_endpoint
-  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  cluster_name       = module.eks[0].cluster_name
+  cluster_endpoint   = module.eks[0].cluster_endpoint
+  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/ingress-controller"
   subnets            = module.vpc.private_subnets
-  security_groups    = [module.eks.cluster_security_group_id]
+  security_groups    = [module.eks[0].cluster_security_group_id]
   domain_name        = var.domain_name
 }
 
@@ -483,9 +483,9 @@ module "grafana" {
   }
 
   env                = var.env
-  cluster_name       = module.eks.cluster_name
-  cluster_endpoint   = module.eks.cluster_endpoint
-  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  cluster_name       = module.eks[0].cluster_name
+  cluster_endpoint   = module.eks[0].cluster_endpoint
+  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/grafana"
   subnets            = module.vpc.private_subnets
 }
@@ -501,9 +501,9 @@ module "promtail" {
   }
 
   env                = var.env
-  cluster_name       = module.eks.cluster_name
-  cluster_endpoint   = module.eks.cluster_endpoint
-  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  cluster_name       = module.eks[0].cluster_name
+  cluster_endpoint   = module.eks[0].cluster_endpoint
+  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/promtail"
 }
 
@@ -518,11 +518,11 @@ module "loki" {
   }
 
   env                = var.env
-  cluster_name       = module.eks.cluster_name
-  cluster_endpoint   = module.eks.cluster_endpoint
-  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  cluster_name       = module.eks[0].cluster_name
+  cluster_endpoint   = module.eks[0].cluster_endpoint
+  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/loki"
-  cluster_oidc_id    = module.eks.cluster_oidc_id
+  cluster_oidc_id    = module.eks[0].cluster_oidc_id
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
