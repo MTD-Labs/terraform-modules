@@ -444,6 +444,8 @@ module "ingress" {
   source = "../../aws/ingress-controller"
 
   providers = {
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
     kubernetes = kubernetes.eks
   }
 

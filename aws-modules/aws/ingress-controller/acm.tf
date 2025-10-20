@@ -5,9 +5,9 @@ resource "aws_acm_certificate" "alb_certificate" {
   domain_name               = var.domain_name
   provider                  = aws.main
   validation_method         = "DNS"
-  tags                      = local.tags
 
   lifecycle {
     create_before_destroy = true
   }
 }
+
