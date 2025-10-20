@@ -915,3 +915,9 @@ variable "eks_enabled_logs" {
   type        = list(string)
   default     = ["api", "audit", "authenticator"]
 }
+
+variable "grafana_host" {
+  description = "Grafana Host"
+  type        = string
+  default     = ""
+}

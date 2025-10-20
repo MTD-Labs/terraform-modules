@@ -488,6 +488,7 @@ module "grafana" {
   cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
   values_file_path   = "${path.root}/helm-charts/grafana"
   subnets            = module.vpc.private_subnets
+  host               = var.grafana_host
 }
 
 module "promtail" {
