@@ -11,8 +11,8 @@ resource "aws_s3_bucket" "loki_bucket" {
 
 data "aws_iam_policy_document" "loki_s3" {
   statement {
-    sid     = "LokiStorage"
-    effect  = "Allow"
+    sid    = "LokiStorage"
+    effect = "Allow"
     actions = [
       "s3:ListBucket",
       "s3:PutObject",
@@ -35,9 +35,9 @@ data "template_file" "loki_trust_policy" {
   template = file("${path.module}/policies/trust-policy.json")
 
   vars = {
-    cluster_oidc_id         = var.cluster_oidc_id
-    account_id = data.aws_caller_identity.current.account_id
-    region = var.region
+    cluster_oidc_id = var.cluster_oidc_id
+    account_id      = data.aws_caller_identity.current.account_id
+    region          = var.region
   }
 }
 
@@ -54,8 +54,8 @@ resource "aws_iam_role_policy_attachment" "loki_s3_attachment" {
 
 
 data "archive_file" "loki_values" {
-  type                  = "zip"
-  source_file           = "${var.values_file_path}/values-${var.env}.yaml"
+  type        = "zip"
+  source_file = "${var.values_file_path}/values-${var.env}.yaml"
   output_path = "/tmp/loki_helm_dir_checksum.zip"
 }
 
@@ -68,10 +68,10 @@ resource "helm_release" "loki" {
   create_namespace = true
 
   values = [templatefile("${var.values_file_path}/values-${var.env}.yaml", {
-    env = var.env
-    cluster_name = var.cluster_name
+    env              = var.env
+    cluster_name     = var.cluster_name
     loki_bucket_name = var.loki_bucket_name
-    region = var.region
+    region           = var.region
   })]
 
   set = [

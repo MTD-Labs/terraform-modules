@@ -1,8 +1,8 @@
 data "aws_caller_identity" "current" {}
 
 data "archive_file" "promtail_values" {
-  type                  = "zip"
-  source_file           = "${var.values_file_path}/values-${var.env}.yaml"
+  type        = "zip"
+  source_file = "${var.values_file_path}/values-${var.env}.yaml"
   output_path = "/tmp/promtail_helm_dir_checksum.zip"
 }
 

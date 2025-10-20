@@ -16,8 +16,8 @@ resource "helm_release" "nginx_controller" {
     templatefile(
       "${var.values_file_path}/values-${var.env}.yaml",
       {
-        subnets = join(",", var.subnets)
-        acm_arn = aws_acm_certificate.ingress_certificate.arn
+        subnets         = join(",", var.subnets)
+        acm_arn         = aws_acm_certificate.ingress_certificate.arn
         security_groups = join(",", var.security_groups)
       }
     )

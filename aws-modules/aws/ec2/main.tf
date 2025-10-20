@@ -179,7 +179,7 @@ resource "null_resource" "copy_grafana_tree" {
       "sudo mkdir -p /app/grafana",
       "sudo chown -R ubuntu:ubuntu /app"
     ]
-    
+
     connection {
       type  = "ssh"
       user  = "ubuntu"
@@ -205,7 +205,7 @@ resource "null_resource" "copy_grafana_tree" {
   provisioner "file" {
     content     = data.aws_secretsmanager_secret_version.grafana-prod.secret_string
     destination = "/app/grafana/.env"
-    
+
     connection {
       type  = "ssh"
       user  = "ubuntu"
@@ -220,7 +220,7 @@ resource "null_resource" "copy_grafana_tree" {
       "chmod 600 /app/grafana/.env",
       "sudo chown -R ubuntu:ubuntu /app/grafana"
     ]
-    
+
     connection {
       type  = "ssh"
       user  = "ubuntu"

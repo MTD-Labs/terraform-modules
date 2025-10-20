@@ -434,22 +434,22 @@ module "eks" {
     aws = aws.main
   }
 
-  region                    = var.region
-  env                       = var.env
-  tags                      = var.tags
-  cluster_name              = var.eks_cluster_name
-  vpc_id                    = module.vpc.vpc_id
-  vpc_subnets               = module.vpc.private_subnets
-  vpc_private_cidr_blocks   = module.vpc.private_subnets_cidr_blocks
-  kubernetes_version        = var.kubernetes_version
-  instance_types            = var.eks_instance_types
-  node_desired_size         = var.eks_node_desired_size
-  node_min_size             = var.eks_node_min_size
-  node_max_size             = var.eks_node_max_size
-  service_ipv4_cidr         = var.eks_service_ipv4_cidr
-  endpoint_private          = var.eks_endpoint_private
-  endpoint_public           = var.eks_endpoint_public
-  enabled_logs              = var.eks_enabled_logs
+  region                  = var.region
+  env                     = var.env
+  tags                    = var.tags
+  cluster_name            = var.eks_cluster_name
+  vpc_id                  = module.vpc.vpc_id
+  vpc_subnets             = module.vpc.private_subnets
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+  kubernetes_version      = var.kubernetes_version
+  instance_types          = var.eks_instance_types
+  node_desired_size       = var.eks_node_desired_size
+  node_min_size           = var.eks_node_min_size
+  node_max_size           = var.eks_node_max_size
+  service_ipv4_cidr       = var.eks_service_ipv4_cidr
+  endpoint_private        = var.eks_endpoint_private
+  endpoint_public         = var.eks_endpoint_public
+  enabled_logs            = var.eks_enabled_logs
 }
 
 module "ingress" {
@@ -462,14 +462,14 @@ module "ingress" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  env                = var.env
-  cluster_name       = module.eks[0].cluster_name
-  cluster_endpoint   = module.eks[0].cluster_endpoint
-  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
-  values_file_path   = "${path.root}/helm-charts/ingress-controller"
-  subnets            = module.vpc.private_subnets
-  security_groups    = [module.eks[0].cluster_security_group_id]
-  domain_name        = var.domain_name
+  env              = var.env
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  values_file_path = "${path.root}/helm-charts/ingress-controller"
+  subnets          = module.vpc.private_subnets
+  security_groups  = [module.eks[0].cluster_security_group_id]
+  domain_name      = var.domain_name
 }
 
 module "grafana" {
@@ -482,13 +482,13 @@ module "grafana" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  env                = var.env
-  cluster_name       = module.eks[0].cluster_name
-  cluster_endpoint   = module.eks[0].cluster_endpoint
-  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
-  values_file_path   = "${path.root}/helm-charts/grafana"
-  subnets            = module.vpc.private_subnets
-  host               = var.grafana_host
+  env              = var.env
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  values_file_path = "${path.root}/helm-charts/grafana"
+  subnets          = module.vpc.private_subnets
+  host             = var.grafana_host
 }
 
 module "promtail" {
@@ -501,13 +501,13 @@ module "promtail" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  env                = var.env
-  cluster_name       = module.eks[0].cluster_name
-  cluster_endpoint   = module.eks[0].cluster_endpoint
-  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
-  values_file_path   = "${path.root}/helm-charts/promtail"
+  env              = var.env
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  values_file_path = "${path.root}/helm-charts/promtail"
 
-  tenant_id =        var.tenant_id
+  tenant_id = var.tenant_id
 }
 
 module "loki" {
@@ -520,12 +520,12 @@ module "loki" {
     aws.us_east_1 = aws.us_east_1
   }
 
-  env                = var.env
-  cluster_name       = module.eks[0].cluster_name
-  cluster_endpoint   = module.eks[0].cluster_endpoint
-  cluster_ca_cert    = module.eks[0].cluster_certificate_authority_data
-  values_file_path   = "${path.root}/helm-charts/loki"
-  cluster_oidc_id    = module.eks[0].cluster_oidc_id
+  env              = var.env
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  values_file_path = "${path.root}/helm-charts/loki"
+  cluster_oidc_id  = module.eks[0].cluster_oidc_id
 }
 
 module "metric-server" {

@@ -41,7 +41,7 @@ resource "aws_ecs_cluster" "cluster" {
 
 resource "aws_cloudwatch_log_group" "container" {
   for_each          = { for idx, c in var.containers : idx => c }
-  name              = "${each.value.name}"
+  name              = each.value.name
   retention_in_days = 14
   tags              = local.tags
 }
@@ -133,7 +133,7 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
           "RemoveKeys" = "container_id,ecs_task_arn"
           "LineFormat" = "key_value"
         }
-      } : {
+        } : {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.container[each.key].name

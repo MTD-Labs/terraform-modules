@@ -1,6 +1,6 @@
 data "archive_file" "grafana_values" {
-  type                  = "zip"
-  source_file           = "${var.values_file_path}/values-${var.env}.yaml"
+  type        = "zip"
+  source_file = "${var.values_file_path}/values-${var.env}.yaml"
   output_path = "/tmp/grafana_helm_dir_checksum.zip"
 }
 
@@ -14,7 +14,7 @@ resource "helm_release" "grafana" {
 
   values = [templatefile("${var.values_file_path}/values-${var.env}.yaml", {
     subnets = join(",", var.subnets)
-    host            = var.host
+    host    = var.host
   })]
 
   depends_on = [data.archive_file.grafana_values]

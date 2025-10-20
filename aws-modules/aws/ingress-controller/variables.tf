@@ -43,7 +43,7 @@ variable "subnets" {
 variable "security_groups" {
   description = "K8s Nodes SG IDs"
   type        = list(string)
-  default = []
+  default     = []
 }
 
 variable "domain_name" {
