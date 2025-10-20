@@ -453,7 +453,7 @@ module "ingress" {
   cluster_name       = module.eks.cluster_name
   cluster_endpoint   = module.eks.cluster_endpoint
   cluster_ca_cert    = module.eks.cluster_certificate_authority_data
-  values_file_path   = "${path.root}/../../aws/ingress-controller/helm-chart"
+  values_file_path   = "./../../aws/ingress-controller/helm-chart"
   subnets            = module.vpc.private_subnets
   security_groups    = [module.eks.cluster_security_group_id]
   domain_name        = var.domain_name
