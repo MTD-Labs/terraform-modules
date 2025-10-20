@@ -526,6 +526,7 @@ module "loki" {
   cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
   values_file_path = "${path.root}/helm-charts/loki"
   cluster_oidc_id  = module.eks[0].cluster_oidc_id
+  loki_bucket_name = trendex-prod-loki-bucket
 }
 
 module "metric-server" {
