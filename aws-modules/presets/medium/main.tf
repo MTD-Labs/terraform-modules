@@ -429,7 +429,7 @@ provider "helm" {
 
 module "eks" {
   source = "../../aws/eks"
-
+  count  = var.eks_enabled == true ? 1 : 0
   providers = {
     aws = aws.main
   }
@@ -454,7 +454,7 @@ module "eks" {
 
 module "ingress" {
   source = "../../aws/ingress-controller"
-
+  count  = var.eks_enabled == true ? 1 : 0
   providers = {
     helm          = helm.eks
     kubernetes    = kubernetes.eks
@@ -472,6 +472,58 @@ module "ingress" {
   domain_name        = var.domain_name
 }
 
+module "grafana" {
+  source = "../../aws/monitoring/grafana"
+  count  = var.eks_enabled == true ? 1 : 0
+  providers = {
+    helm          = helm.eks
+    kubernetes    = kubernetes.eks
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  env                = var.env
+  cluster_name       = module.eks.cluster_name
+  cluster_endpoint   = module.eks.cluster_endpoint
+  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  values_file_path   = "${path.root}/helm-charts/grafana"
+  subnets            = module.vpc.private_subnets
+}
+
+module "promtail" {
+  source = "../../aws/monitoring/promtail"
+  count  = var.eks_enabled == true ? 1 : 0
+  providers = {
+    helm          = helm.eks
+    kubernetes    = kubernetes.eks
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  env                = var.env
+  cluster_name       = module.eks.cluster_name
+  cluster_endpoint   = module.eks.cluster_endpoint
+  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  values_file_path   = "${path.root}/helm-charts/promtail"
+}
+
+module "loki" {
+  source = "../../aws/monitoring/loki"
+  count  = var.eks_enabled == true ? 1 : 0
+  providers = {
+    helm          = helm.eks
+    kubernetes    = kubernetes.eks
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+  }
+
+  env                = var.env
+  cluster_name       = module.eks.cluster_name
+  cluster_endpoint   = module.eks.cluster_endpoint
+  cluster_ca_cert    = module.eks.cluster_certificate_authority_data
+  values_file_path   = "${path.root}/helm-charts/loki"
+  cluster_oidc_id    = module.eks.cluster_oidc_id
+}
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
   count      = var.mq_enabled == true ? 1 : 0

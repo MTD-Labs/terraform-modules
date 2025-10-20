@@ -27,3 +27,11 @@ output "worker_iam_role_arn" {
   value       = aws_iam_role.eks_node.arn
   description = "IAM Role ARN of worker nodes"
 }
+
+output "cluster_oidc_id" {
+  description = "The OIDC ID of the EKS cluster"
+  value = regex(
+    "https://oidc\\.eks\\.([a-z0-9-]+)\\.amazonaws\\.com/id/(.+)",
+    aws_eks_cluster.this.identity[0].oidc[0].issuer
+  )[1]
+}
