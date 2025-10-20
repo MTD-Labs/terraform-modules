@@ -1,3 +1,7 @@
+########################################
+# EKS CLUSTER (your original content)
+########################################
+
 data "aws_caller_identity" "current" {}
 
 locals {
@@ -34,11 +38,9 @@ resource "aws_eks_cluster" "this" {
 }
 
 resource "aws_iam_role" "eks_cluster" {
-  name = "${var.cluster_name}-eks-cluster-role"
-
+  name               = "${var.cluster_name}-eks-cluster-role"
   assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
-
-  tags = local.tags
+  tags               = local.tags
 }
 
 data "aws_iam_policy_document" "eks_assume_role" {
@@ -48,7 +50,6 @@ data "aws_iam_policy_document" "eks_assume_role" {
       type        = "Service"
       identifiers = ["eks.amazonaws.com"]
     }
-
     actions = ["sts:AssumeRole"]
   }
 }
@@ -98,66 +99,19 @@ resource "aws_eks_node_group" "default" {
   tags = local.tags
 }
 
-# --- IRSA OIDC provider for this cluster ---
-data "aws_eks_cluster" "this" {
-  name = aws_eks_cluster.this.name
-}
-data "aws_eks_cluster_auth" "this" {
-  name = aws_eks_cluster.this.name
-}
-
-resource "aws_iam_openid_connect_provider" "this" {
-  url = data.aws_eks_cluster.this.identity[0].oidc[0].issuer
-  client_id_list = ["sts.amazonaws.com"]
-  thumbprint_list = [data.aws_eks_cluster.this.identity[0].oidc[0].thumbprint]
-}
-
-# --- IAM role for the EBS CSI controller service account ---
-data "aws_iam_policy_document" "ebs_csi_assume_role" {
-  statement {
-    actions = ["sts:AssumeRoleWithWebIdentity"]
-    effect  = "Allow"
-    principals {
-      type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.this.arn]
-    }
-    condition {
-      test     = "StringEquals"
-      variable = replace(data.aws_eks_cluster.this.identity[0].oidc[0].issuer, "https://", "") ~ ":sub"
-      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
-    }
-  }
-}
-
-resource "aws_iam_role" "ebs_csi_controller" {
-  name               = "${var.cluster_name}-ebs-csi-controller"
-  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume_role.json
-  tags               = local.tags
-}
-
-# AWS-managed policy for the driver
-resource "aws_iam_role_policy_attachment" "ebs_csi" {
-  role       = aws_iam_role.ebs_csi_controller.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-}
-
 resource "aws_iam_role" "eks_node" {
-  name = "${var.cluster_name}-eks-node-role"
-
+  name               = "${var.cluster_name}-eks-node-role"
   assume_role_policy = data.aws_iam_policy_document.eks_node_assume_role.json
-
-  tags = local.tags
+  tags               = local.tags
 }
 
 data "aws_iam_policy_document" "eks_node_assume_role" {
   statement {
     effect = "Allow"
-
     principals {
       type        = "Service"
       identifiers = ["ec2.amazonaws.com"]
     }
-
     actions = ["sts:AssumeRole"]
   }
 }
@@ -175,4 +129,87 @@ resource "aws_iam_role_policy_attachment" "AmazonEC2ContainerRegistryReadOnly" {
 resource "aws_iam_role_policy_attachment" "AmazonEKS_CNI_Policy" {
   role       = aws_iam_role.eks_node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+
+########################################
+# IRSA / OIDC PROVIDER (NEW)
+########################################
+
+# 1) Derive issuer pieces cleanly
+locals {
+  oidc_issuer   = aws_eks_cluster.this.identity[0].oidc[0].issuer # e.g. https://oidc.eks.me-south-1.amazonaws.com/id/1EE48D00...
+  oidc_hostpath = replace(local.oidc_issuer, "https://", "")       # e.g. oidc.eks.me-south-1.amazonaws.com/id/1EE48D00...
+  oidc_id       = element(split("/id/", local.oidc_issuer), 1)     # e.g. 1EE48D00...
+}
+
+# 2) Pull TLS thumbprint for the OIDC provider
+data "tls_certificate" "eks_oidc" {
+  url = local.oidc_issuer
+}
+
+# 3) Create (or manage) the IAM OIDC provider for this cluster
+resource "aws_iam_openid_connect_provider" "eks" {
+  url             = local.oidc_issuer
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = [data.tls_certificate.eks_oidc.certificates[0].sha1_fingerprint]
+
+  tags = local.tags
+}
+
+
+########################################
+# EBS CSI DRIVER (ADD-ON + IRSA ROLE) (NEW)
+########################################
+
+# IRSA role for the aws-ebs-csi-driver controller:
+# The service account used by the addon is: kube-system:ebs-csi-controller-sa
+data "aws_iam_policy_document" "ebs_csi_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_hostpath}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    # lock it down to the SA name/namespace the addon uses:
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_hostpath}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi_irsa" {
+  name               = "${var.cluster_name}-ebs-csi-irsa"
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume_role.json
+  tags               = local.tags
+}
+
+# Managed AWS policy granting EBS CSI permissions
+resource "aws_iam_role_policy_attachment" "ebs_csi_policy" {
+  role       = aws_iam_role.ebs_csi_irsa.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
+
+# Install the official EKS add-on and bind to the IRSA role
+resource "aws_eks_addon" "ebs_csi" {
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "aws-ebs-csi-driver"
+  # You can pin a version if desired, e.g. "v1.30.0-eksbuild.1"
+  # addon_version             = var.ebs_csi_addon_version
+  service_account_role_arn    = aws_iam_role.ebs_csi_irsa.arn
+  resolve_conflicts_on_update = "OVERWRITE"
+  tags                        = local.tags
+
+  depends_on = [
+    aws_eks_node_group.default,
+    aws_iam_role_policy_attachment.ebs_csi_policy
+  ]
 }
