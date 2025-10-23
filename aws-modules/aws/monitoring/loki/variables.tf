@@ -1,7 +1,7 @@
 variable "region" {
   type        = string
   description = "AWS region to deploy resources."
-  default     = "eu-central-1"
+  default     = "me-south-1"
 }
 
 variable "loki_bucket_name" {

@@ -509,6 +509,7 @@ module "loki" {
   cluster_oidc_id  = module.eks[0].cluster_oidc_id
   loki_bucket_name = var.loki_bucket_name
   eks_enabled =  var.eks_enabled
+  region          = var.region
 }
 
 module "metric-server" {
