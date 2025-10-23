@@ -506,3 +506,14 @@ variable "cloudflare_proxied" {
   description = "Whether to enable Cloudflare proxy (orange cloud)"
   default     = false
 }
+
+variable "aws_secrets_list" {
+  description = "Secrets to create (metadata-only placeholder versions)"
+  type = map(object({
+    description             = string
+    type                    = string           # "plaintext" | "key_value"
+    recovery_window_in_days = optional(number, 30)
+    tags                    = optional(map(string), {})
+  }))
+  default = {}
+}

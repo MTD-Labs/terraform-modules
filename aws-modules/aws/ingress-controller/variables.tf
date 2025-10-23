@@ -51,3 +51,9 @@ variable "domain_name" {
   type        = string
   default     = "example.com"
 }
+
+variable "eks_enabled" {
+  description = "Check for eks enabled"
+  type        = bool
+  default     = false
+}

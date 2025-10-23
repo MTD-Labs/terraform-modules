@@ -1,6 +1,10 @@
-data "aws_caller_identity" "current" {}
+data "aws_caller_identity" "current" {
+  count  = var.eks_enabled == true ? 1 : 0
+
+}
 
 resource "aws_s3_bucket" "loki_bucket" {
+  count  = var.eks_enabled == true ? 1 : 0
   bucket = var.loki_bucket_name
 
   # Optional settings like versioning, encryption, etc., can go here.
@@ -9,7 +13,32 @@ resource "aws_s3_bucket" "loki_bucket" {
   # }
 }
 
+provider "kubernetes" {
+  host                   = var.cluster_endpoint
+  cluster_ca_certificate = base64decode(var.cluster_ca_cert)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    # This requires the awscli to be installed locally where Terraform is executed
+    args = ["eks", "get-token", "--cluster-name", var.cluster_name, "--output=json"]
+  }
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = var.cluster_endpoint
+    cluster_ca_certificate = base64decode(var.cluster_ca_cert)
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args        = ["eks", "get-token", "--cluster-name", var.cluster_name, "--output=json"]
+    }
+  }
+}
+
 data "aws_iam_policy_document" "loki_s3" {
+  count  = var.eks_enabled == true ? 1 : 0
   statement {
     sid    = "LokiStorage"
     effect = "Allow"
@@ -27,39 +56,44 @@ data "aws_iam_policy_document" "loki_s3" {
 }
 
 resource "aws_iam_policy" "loki_s3_policy" {
+  count  = var.eks_enabled == true ? 1 : 0
   name   = "LokiS3AccessPolicy-${var.env}"
-  policy = data.aws_iam_policy_document.loki_s3.json
+  policy = data.aws_iam_policy_document.loki_s3[0].json
 }
 
 data "template_file" "loki_trust_policy" {
   template = file("${path.module}/policies/trust-policy.json")
-
+  count  = var.eks_enabled == true ? 1 : 0
   vars = {
     cluster_oidc_id = var.cluster_oidc_id
-    account_id      = data.aws_caller_identity.current.account_id
+    account_id      = data.aws_caller_identity.current[0].account_id
     region          = var.region
   }
 }
 
 
 resource "aws_iam_role" "loki_role" {
+  count  = var.eks_enabled == true ? 1 : 0
   name               = "LokiServiceAccountRole-${var.env}"
-  assume_role_policy = data.template_file.loki_trust_policy.rendered
+  assume_role_policy = data.template_file.loki_trust_policy[0].rendered
 }
 
 resource "aws_iam_role_policy_attachment" "loki_s3_attachment" {
-  role       = aws_iam_role.loki_role.name
-  policy_arn = aws_iam_policy.loki_s3_policy.arn
+  count  = var.eks_enabled == true ? 1 : 0
+  role       = aws_iam_role.loki_role[0].name
+  policy_arn = aws_iam_policy.loki_s3_policy[0].arn
 }
 
 
 data "archive_file" "loki_values" {
+  count  = var.eks_enabled == true ? 1 : 0
   type        = "zip"
   source_file = "${var.values_file_path}/values-${var.env}.yaml"
   output_path = "/tmp/loki_helm_dir_checksum.zip"
 }
 
 resource "helm_release" "loki" {
+  count  = var.eks_enabled == true ? 1 : 0
   name             = "loki"
   repository       = "https://grafana.github.io/helm-charts"
   chart            = "loki"
@@ -75,11 +109,30 @@ resource "helm_release" "loki" {
   })]
 
   set = [
-    {
-      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-      value = aws_iam_role.loki_role.arn
-    }
-  ]
+      # common SA (if used by some pods)
+      {
+        name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+        value = aws_iam_role.loki_role[0].arn
+      },
+
+      # per-component SAs (add what you actually deploy)
+      {
+        name  = "compactor.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+        value = aws_iam_role.loki_role[0].arn
+      },
+      {
+        name  = "backend.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+        value = aws_iam_role.loki_role[0].arn
+      },
+      {
+        name  = "read.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+        value = aws_iam_role.loki_role[0].arn
+      },
+      {
+        name  = "write.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+        value = aws_iam_role.loki_role[0].arn
+      }
+    ]
 
   depends_on = [data.archive_file.loki_values]
 

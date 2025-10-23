@@ -403,30 +403,6 @@ module "mq" {
   extra_allowed_cidr_blocks     = var.mq_extra_allowed_cidr_blocks
 }
 
-provider "kubernetes" {
-  alias                  = "eks"
-  host                   = module.eks[0].cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = ["eks", "get-token", "--cluster-name", module.eks[0].cluster_name]
-  }
-}
-
-provider "helm" {
-  alias = "eks"
-  kubernetes = {
-    host                   = module.eks[0].cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = ["eks", "get-token", "--cluster-name", module.eks[0].cluster_name, "--output=json"]
-    }
-  }
-}
-
 module "eks" {
   source = "../../aws/eks"
   count  = var.eks_enabled == true ? 1 : 0
@@ -452,14 +428,22 @@ module "eks" {
   enabled_logs            = var.eks_enabled_logs
 }
 
+resource "null_resource" "wait_for_cluster" {
+  count = var.eks_enabled ? 1 : 0
+
+  provisioner "local-exec" {
+    command = "echo Waiting for EKS cluster to be ready... && sleep 30"
+  }
+
+  depends_on = [module.eks[0]]
+}
+
 module "ingress" {
   source = "../../aws/ingress-controller"
-  count  = var.eks_enabled == true ? 1 : 0
+  
   providers = {
-    helm          = helm.eks
-    kubernetes    = kubernetes.eks
-    aws.main      = aws.main
-    aws.us_east_1 = aws.us_east_1
+    aws.main       = aws.main
+    aws.us_east_1  = aws.us_east_1
   }
 
   env              = var.env
@@ -470,14 +454,13 @@ module "ingress" {
   subnets          = module.vpc.private_subnets
   security_groups  = [module.eks[0].cluster_security_group_id]
   domain_name      = var.domain_name
+  eks_enabled =  var.eks_enabled
+  
 }
 
 module "grafana" {
   source = "../../aws/monitoring/grafana"
-  count  = var.eks_enabled == true ? 1 : 0
   providers = {
-    helm          = helm.eks
-    kubernetes    = kubernetes.eks
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
   }
@@ -489,14 +472,13 @@ module "grafana" {
   values_file_path = "${path.root}/helm-charts/grafana"
   subnets          = module.vpc.private_subnets
   host             = var.grafana_host
+  eks_enabled =  var.eks_enabled
+
 }
 
 module "promtail" {
   source = "../../aws/monitoring/promtail"
-  count  = var.eks_enabled == true ? 1 : 0
   providers = {
-    helm          = helm.eks
-    kubernetes    = kubernetes.eks
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
   }
@@ -508,14 +490,13 @@ module "promtail" {
   values_file_path = "${path.root}/helm-charts/promtail"
 
   tenant_id = var.tenant_id
+  eks_enabled =  var.eks_enabled
+
 }
 
 module "loki" {
   source = "../../aws/monitoring/loki"
-  count  = var.eks_enabled == true ? 1 : 0
   providers = {
-    helm          = helm.eks
-    kubernetes    = kubernetes.eks
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
   }
@@ -527,17 +508,27 @@ module "loki" {
   values_file_path = "${path.root}/helm-charts/loki"
   cluster_oidc_id  = module.eks[0].cluster_oidc_id
   loki_bucket_name = var.loki_bucket_name
+  eks_enabled =  var.eks_enabled
 }
 
 module "metric-server" {
   source = "../../aws/monitoring/metric-server"
-  count  = var.eks_enabled == true ? 1 : 0
   providers = {
-    helm          = helm.eks
-    kubernetes    = kubernetes.eks
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
   }
+  env              = var.env
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  eks_enabled =  var.eks_enabled
+
+}
+
+module "secrets" {
+  source = "../../aws/secrets"
+
+  aws_secrets_list = var.aws_secrets_list
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
@@ -575,4 +566,45 @@ resource "aws_iam_role_policy_attachment" "ecs_task_mq_read_only" {
 
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = aws_iam_policy.mq_read_only[0].arn
+}
+
+module "docdb" {
+  count  = var.docdb_enabled ? 1 : 0
+  source = "../../aws/docdb"
+
+  region = var.region
+  env    = var.env
+  name   = var.name
+  tags   = var.tags
+
+  vpc_id                  = module.vpc.vpc_id
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+  vpc_subnets             = module.vpc.database_subnets
+  vpc_subnet_group_name   = module.vpc.database_subnet_group_name
+
+  bastion_security_group_id      = module.ec2[0].security_group_id
+  allow_vpc_cidr_block           = var.docdb_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks  = var.docdb_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks      = var.docdb_extra_allowed_cidr_blocks
+
+  engine_version                 = var.docdb_engine_version
+  family                         = var.docdb_family
+  instance_class                 = var.docdb_instance_class
+  instances_count                = var.docdb_instances_count
+
+  backup_retention_period        = var.docdb_backup_retention_period
+  preferred_maintenance_window   = var.docdb_preferred_maintenance_window
+  preferred_backup_window        = var.docdb_preferred_backup_window
+
+  master_username                = var.docdb_master_username
+  default_database               = var.docdb_default_database
+
+  kms_ssm_key_arn                = var.kms_ssm_key_arn
+  kms_key_id                     = var.docdb_kms_key_id
+
+  deletion_protection            = var.docdb_deletion_protection
+  skip_final_snapshot            = var.docdb_skip_final_snapshot
+  enabled_cloudwatch_logs_exports = var.docdb_enabled_cloudwatch_logs_exports
+
+  docdb_cluster_parameters       = var.docdb_cluster_parameters
 }

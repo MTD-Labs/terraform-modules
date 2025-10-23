@@ -39,3 +39,8 @@ variable "subnets" {
   type    = list(string)
   default = []
 }
+variable "eks_enabled" {
+  description = "Check for eks enabled"
+  type        = bool
+  default     = false
+}

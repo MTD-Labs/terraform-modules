@@ -933,3 +933,136 @@ variable "loki_bucket_name" {
   description = "Name of the S3 bucket for storing Loki logs."
   default     = ""
 }
+
+variable "aws_secrets_list" {
+  description = "Secrets to create (metadata-only placeholder versions)"
+  type = map(object({
+    description             = string
+    type                    = string           # "plaintext" | "key_value"
+    recovery_window_in_days = optional(number, 30)
+    tags                    = optional(map(string), {})
+  }))
+  default = {}
+}
+
+############################################
+#  AWS DocumentDB (Mongo) variables
+############################################
+
+variable "docdb_allow_vpc_cidr_block" {
+  description = "Allow full VPC CIDR block for DocumentDB access"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_allow_vpc_private_cidr_blocks" {
+  description = "Allow VPC private CIDR blocks for DocumentDB access"
+  type        = bool
+  default     = true
+}
+
+variable "docdb_extra_allowed_cidr_blocks" {
+  description = "Extra allowed CIDR blocks for DocumentDB access"
+  type        = string
+  default     = "10.0.0.0/8"
+}
+
+variable "docdb_engine_version" {
+  description = "DocumentDB engine version (e.g. 5.0, 4.0)"
+  type        = string
+  default     = "5.0"
+}
+
+variable "docdb_family" {
+  description = "Parameter group family for DocumentDB (e.g. docdb5.0)"
+  type        = string
+  default     = "docdb5.0"
+}
+
+variable "docdb_instance_class" {
+  description = "Instance class for DocumentDB cluster instances"
+  type        = string
+  default     = "db.t3.medium"
+}
+
+variable "docdb_instances_count" {
+  description = "Number of instances in the DocumentDB cluster"
+  type        = number
+  default     = 1
+}
+
+variable "docdb_preferred_maintenance_window" {
+  description = "Weekly maintenance window in UTC"
+  type        = string
+  default     = "Sat:00:00-Sat:03:00"
+}
+
+variable "docdb_preferred_backup_window" {
+  description = "Daily backup window in UTC"
+  type        = string
+  default     = "03:00-06:00"
+}
+
+variable "docdb_master_username" {
+  description = "Master username for DocumentDB cluster"
+  type        = string
+  default     = "docdb"
+}
+
+variable "docdb_default_database" {
+  description = "Default database name for connection URIs"
+  type        = string
+  default     = "admin"
+}
+
+variable "kms_ssm_key_arn" {
+  description = "KMS key ARN for encrypting SSM parameters (shared with other modules)"
+  type        = string
+  default     = "alias/aws/ssm"
+}
+
+variable "docdb_kms_key_id" {
+  description = "KMS key ID or ARN for encrypting DocumentDB storage (optional)"
+  type        = string
+  default     = null
+}
+
+variable "docdb_deletion_protection" {
+  description = "Enable deletion protection on the DocumentDB cluster"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_skip_final_snapshot" {
+  description = "Skip creation of a final snapshot when deleting the cluster"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_enabled_cloudwatch_logs_exports" {
+  description = "List of CloudWatch log exports for DocumentDB (supported: [\"audit\"])"
+  type        = list(string)
+  default     = []
+}
+
+variable "docdb_cluster_parameters" {
+  description = "Map of custom cluster parameters for DocumentDB"
+  type        = map(string)
+  default     = {}
+}
+
+############################################
+#  Shared existing variable (inherited)
+############################################
+
+variable "docdb_backup_retention_period" {
+  description = "Days to retain automated backups"
+  type        = number
+  default     = 7
+}
+
+variable "docdb_enabled" {
+  description = "Enable DocDB"
+  type        = bool
+  default     = false
+}

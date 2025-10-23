@@ -104,6 +104,7 @@ module "ec2" {
 
   cloudflare_proxied = var.cloudflare_proxied
   cloudflare_zone    = var.cloudflare_zone
+  
 }
 
 module "s3" {
@@ -130,3 +131,10 @@ module "cloudtrail" {
 
   log_retention_days = var.cloudtrail_log_retention_days
 }
+
+module "secrets" {
+  source = "../../aws/secrets"
+
+  aws_secrets_list = var.aws_secrets_list
+}
+

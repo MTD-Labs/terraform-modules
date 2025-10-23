@@ -59,3 +59,9 @@ variable "values_file_path" {
   description = "Loki Values Path"
   default     = null
 }
+
+variable "eks_enabled" {
+  description = "Check for eks enabled"
+  type        = bool
+  default     = false
+}

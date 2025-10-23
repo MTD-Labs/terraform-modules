@@ -8,7 +8,14 @@ terraform {
       version               = ">= 5.25.0"
       configuration_aliases = [aws.main, aws.us_east_1]
     }
-
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+      configuration_aliases = [kubernetes.eks]
+    }
+    helm = {
+      source = "hashicorp/helm"
+      configuration_aliases = [helm.eks]
+    }
     local    = ">= 2.2.2"
     null     = ">= 3.1.1"
     template = ">= 2.2.0"
@@ -19,12 +26,3 @@ terraform {
     }
   }
 }
-
-# provider "aws" {
-#   region = var.region
-# }
-
-# provider "aws" {
-#   alias  = "us_east_1"
-#   region = "us-east-1"
-# }
