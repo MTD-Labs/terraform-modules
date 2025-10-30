@@ -12,7 +12,3 @@ terraform {
     random = ">= 3.4.3"
   }
 }
-
-# provider "aws" {
-#   region = var.region
-# }
