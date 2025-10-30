@@ -127,15 +127,15 @@ resource "aws_mq_broker" "amazon_mq" {
     groups         = ["admin"]
   }
 
-  dynamic "user" {
-    for_each = var.users
-    content {
-      username       = user.key
-      password       = random_password.user_password[user.key].result
-      groups         = user.value.groups
-      console_access = try(user.value.console_access, false)
-    }
-  }
+  # dynamic "user" {
+  #   for_each = var.users
+  #   content {
+  #     username       = user.key
+  #     password       = random_password.user_password[user.key].result
+  #     groups         = user.value.groups
+  #     console_access = try(user.value.console_access, false)
+  #   }
+  # }
 
   tags = local.tags
 }

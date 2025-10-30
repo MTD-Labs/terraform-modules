@@ -613,7 +613,7 @@ module "mq" {
   tags = var.tags
 
   vpc_id                  = module.vpc.vpc_id
-  vpc_subnets             = module.vpc.private_subnets
+  vpc_subnets             = [module.vpc.private_subnets[0]]
   vpc_cidr_block          = module.vpc.vpc_cidr_block
   vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
 
@@ -624,7 +624,7 @@ module "mq" {
   auto_minor_version_upgrade = var.mq_auto_minor_version_upgrade
   authentication_strategy    = var.mq_authentication_strategy
   admin_username             = var.mq_admin_username
-  users                      = var.mq_users
+  # users                      = var.mq_users
 
   enable_general_logging = var.mq_enable_general_logging
   enable_audit_logging   = var.mq_enable_audit_logging
