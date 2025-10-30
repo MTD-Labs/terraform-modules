@@ -45,7 +45,7 @@ data "aws_iam_policy_document" "ec2_describe_volumes_policy_doc" {
 }
 
 resource "aws_iam_policy" "ec2_describe_volumes_policy" {
-  name   = "${var.env}-ec2-describe-volumes-policy"
+  name   = "${var.env}-ec2-describe-volumes-policy-${var.region}"
   policy = data.aws_iam_policy_document.ec2_describe_volumes_policy_doc.json
 }
 
@@ -55,12 +55,12 @@ resource "aws_iam_role_policy_attachment" "ec2_describe_volumes_attach" {
 }
 
 resource "aws_iam_policy" "secrets_read_policy" {
-  name   = "${var.env}-secrets-read-policy"
+  name   = "${var.env}-secrets-read-policy-${var.region}"
   policy = data.aws_iam_policy_document.secrets_read_policy_doc.json
 }
 
 resource "aws_iam_role" "ssm_role" {
-  name = "${var.env}-SSMRole"
+  name = "${var.env}-SSMRole-${var.region}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -92,52 +92,34 @@ resource "aws_iam_role_policy_attachment" "secrets_read_attach" {
 
 data "aws_ssm_parameter" "ssh_authorized_keys" {
   # name = "dev-legally-ssh-authorized-keys"
-  name = var.ssh_authorized_keys_secret
+  name   = var.ssh_authorized_keys_secret
+  region = var.region
 }
 
 data "aws_secretsmanager_secret_version" "services_env" {
   for_each  = toset(var.services_list)
   secret_id = "${var.env}-${each.key}-env"
+  region    = var.region
 }
 
 data "aws_secretsmanager_secret_version" "cloudflare_token" {
   secret_id = "${var.env}-${var.name}-cloudflare-token"
 }
 
+data "aws_subnet" "primary" {
+  id = var.enable_public_access ? var.public_subnet_id : var.private_subnet_id
+}
+
+# Elastic IP only when public access is enabled
 resource "aws_eip" "eip" {
-  count             = var.enable_public_access ? 1 : 0
-  network_interface = aws_network_interface.public[count.index].id
-  tags              = local.tags
-}
-
-resource "aws_network_interface" "private" {
-  subnet_id       = var.private_subnet_id
-  security_groups = [aws_security_group.sg.id]
-
-  tags = merge(
-    local.tags,
-    {
-      subnet = "private"
-    }
-  )
-}
-
-resource "aws_network_interface" "public" {
-  count           = var.enable_public_access ? 1 : 0
-  subnet_id       = var.public_subnet_id
-  security_groups = [aws_security_group.sg.id]
-
-  tags = merge(
-    local.tags,
-    {
-      subnet = "public"
-    }
-  )
+  count  = var.enable_public_access ? 1 : 0
+  domain = "vpc"
+  tags   = local.tags
 }
 
 resource "aws_ebs_volume" "additional_disk" {
   count             = var.additional_disk ? 1 : 0
-  availability_zone = "${var.region}a"
+  availability_zone = data.aws_subnet.primary.availability_zone
   size              = var.additional_disk_size
   type              = var.additional_disk_type
   encrypted         = false
@@ -168,45 +150,23 @@ resource "aws_key_pair" "this" {
 }
 
 resource "aws_instance" "bastion" {
-  ami                  = var.ami_id
-  ebs_optimized        = true
-  instance_type        = var.instance_type
-  key_name             = aws_key_pair.this.key_name
-  availability_zone    = "${var.region}a"
-  iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
-
-  dynamic "network_interface" {
-    for_each = var.enable_public_access == true ? [1] : [0]
-    content {
-      network_interface_id = aws_network_interface.private.id
-      device_index         = network_interface.value
-    }
-  }
-
-  dynamic "network_interface" {
-    for_each = var.enable_public_access == true ? [0] : []
-    content {
-      network_interface_id = aws_network_interface.public[0].id
-      device_index         = network_interface.value
-    }
-  }
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
+  key_name                    = aws_key_pair.this.key_name
+  iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
+  subnet_id                   = var.enable_public_access ? var.public_subnet_id : var.private_subnet_id
+  vpc_security_group_ids      = [aws_security_group.sg.id]
+  associate_public_ip_address = var.enable_public_access
 
   root_block_device {
     volume_size           = var.ec2_root_volume_size
     delete_on_termination = true
     encrypted             = false
     volume_type           = var.ec2_root_volume_type
-    tags = merge(
-      local.tags,
-      {
-        Name = "RootVolume"
-      }
-    )
+    tags                  = merge(local.tags, { Name = "RootVolume" })
   }
 
-  credit_specification {
-    cpu_credits = "standard"
-  }
+  credit_specification { cpu_credits = "standard" }
 
   user_data = templatefile(
     "${path.module}/templates/user-data.txt",
@@ -220,9 +180,24 @@ resource "aws_instance" "bastion" {
   user_data_replace_on_change = false
   tags                        = local.tags
 
+  depends_on = [
+    aws_iam_instance_profile.ssm_profile,
+    aws_security_group.sg,
+    aws_key_pair.this
+  ]
+
   lifecycle {
-    ignore_changes = [ami]
+    ignore_changes        = [ami]
+    create_before_destroy = true
   }
+
+}
+
+# Associate EIP with instance when public access is enabled
+resource "aws_eip_association" "eip_assoc" {
+  count         = var.enable_public_access ? 1 : 0
+  instance_id   = aws_instance.bastion.id
+  allocation_id = aws_eip.eip[0].id
 }
 
 resource "null_resource" "wait_for_cloud_init" {
@@ -235,14 +210,14 @@ resource "null_resource" "wait_for_cloud_init" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
   # Force Terraform to create the instance first
-  depends_on = [aws_instance.bastion]
+  depends_on = [aws_instance.bastion, aws_eip_association.eip_assoc]
 }
 
 resource "null_resource" "service_env_files" {
@@ -260,7 +235,7 @@ resource "null_resource" "service_env_files" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -293,7 +268,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -305,7 +280,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -317,7 +292,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -329,7 +304,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -341,7 +316,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -353,7 +328,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -364,7 +339,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -381,7 +356,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -393,7 +368,7 @@ resource "null_resource" "dev_provisioning" {
 
     connection {
       type        = "ssh"
-      host        = aws_instance.bastion.public_ip
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
       user        = "ubuntu"
       private_key = tls_private_key.ssh.private_key_openssh
     }
@@ -401,28 +376,30 @@ resource "null_resource" "dev_provisioning" {
 }
 
 resource "aws_iam_instance_profile" "ssm_profile" {
-  name = "${var.env}-SSMInstanceProfile"
+  name = "${var.env}-SSMInstanceProfile-${var.region}"
   role = aws_iam_role.ssm_role.name
 }
 
 resource "cloudflare_record" "stage_a" {
+  count           = var.cloudflare_record_enable ? 1 : 0
   zone_id         = data.cloudflare_zone.this.id
   name            = "stage"
   type            = "A"
-  content         = aws_instance.bastion.public_ip
+  content         = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
   ttl             = 1
   proxied         = var.cloudflare_proxied
   allow_overwrite = true
-  depends_on      = [aws_instance.bastion]
+  depends_on      = [aws_instance.bastion, aws_eip_association.eip_assoc]
 }
 
 resource "cloudflare_record" "stage_wildcard_a" {
+  count           = var.cloudflare_record_enable ? 1 : 0
   zone_id         = data.cloudflare_zone.this.id
   name            = "*.stage"
   type            = "A"
-  content         = aws_instance.bastion.public_ip
+  content         = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
   ttl             = 1
-  proxied         = var.cloudflare_proxied
+  proxied         = false
   allow_overwrite = true
-  depends_on      = [aws_instance.bastion]
+  depends_on      = [aws_instance.bastion, aws_eip_association.eip_assoc]
 }

@@ -1,48 +1,71 @@
-variable "region" {
-  type    = string
-  default = "me-south-1"
-}
-
 variable "env" {
-  type = string
+  type        = string
+  description = "Environment name"
 }
 
 variable "name" {
-  description = "Name suffix used across resources"
+  description = "Name used across resources created"
   type        = string
   default     = ""
 }
 
 variable "tags" {
-  type    = map(string)
-  default = null
+  type        = map(string)
+  description = "Additional tags to apply to resources"
+  default     = {}
 }
 
 variable "vpc_id" {
-  type = string
+  type        = string
+  description = "VPC ID where DocumentDB will be deployed"
 }
 
 variable "vpc_subnets" {
-  description = "(Unused directly here; you likely used these to build the subnet group outside)"
   type        = list(string)
-}
-
-variable "vpc_cidr_block" {
-  type    = string
-  default = "10.0.0.0/8"
+  description = "List of subnet IDs for DocumentDB"
 }
 
 variable "vpc_private_cidr_blocks" {
-  type = list(string)
+  type        = list(string)
+  description = "List of private subnet CIDR blocks"
 }
 
-variable "vpc_subnet_group_name" {
-  description = "Existing DB subnet group name for DocumentDB"
+variable "engine_version" {
+  description = "DocumentDB engine version"
   type        = string
-  default     = "database-subnet-group"
+  default     = "5.0.0"
 }
 
-# ---- Access control, same pattern as Postgres module ----
+variable "family" {
+  description = "DocumentDB parameter group family"
+  type        = string
+  default     = "docdb5.0"
+}
+
+variable "instance_class" {
+  description = "Instance class for DocumentDB instances"
+  type        = string
+  default     = "db.t3.medium"
+}
+
+variable "instance_count" {
+  description = "Number of DocumentDB instances to create"
+  type        = number
+  default     = 1
+}
+
+variable "cluster_parameters" {
+  description = "A map of parameters for DocumentDB cluster"
+  type        = map(string)
+  default = {
+    tls                   = "enabled"
+    ttl_monitor           = "enabled"
+    audit_logs            = "disabled"
+    profiler              = "disabled"
+    profiler_threshold_ms = "100"
+  }
+}
+
 variable "allow_vpc_cidr_block" {
   description = "Allow full VPC CIDR block for access"
   type        = bool
@@ -58,103 +81,77 @@ variable "allow_vpc_private_cidr_blocks" {
 variable "extra_allowed_cidr_blocks" {
   description = "Extra allowed CIDR blocks"
   type        = string
-  default     = "10.0.0.0/8"
+  default     = ""
 }
 
-variable "bastion_security_group_id" {
-  description = "Security group ID of bastion host to allow access"
-  type        = string
-}
-
-# ---- Engine / sizing ----
-variable "engine_version" {
-  description = "DocumentDB engine version (e.g., 5.0, 4.0)"
-  type        = string
-  default     = "5.0"
-}
-
-variable "family" {
-  description = "DocumentDB family for parameter group (e.g., docdb5.0)"
-  type        = string
-  default     = "docdb5.0"
-}
-
-variable "instance_class" {
-  description = "Instance class for the cluster instances"
-  type        = string
-  default     = "db.t3.medium"
-}
-
-variable "instances_count" {
-  description = "Number of instances in the cluster"
-  type        = number
-  default     = 1
-}
-
-# ---- Windows / retention ----
 variable "backup_retention_period" {
-  description = "Days to retain backups"
+  description = "The days to retain backups for"
   type        = number
   default     = 7
 }
 
 variable "preferred_maintenance_window" {
-  description = "Weekly maintenance window in UTC, e.g. Sat:00:00-Sat:03:00"
+  description = "The weekly time range during which system maintenance can occur, in (UTC)"
   type        = string
-  default     = "Sat:00:00-Sat:03:00"
+  default     = "sun:03:00-sun:06:00"
 }
 
 variable "preferred_backup_window" {
-  description = "Daily backup window in UTC, e.g. 03:00-06:00"
+  description = "The daily time range during which automated backups are created (UTC)"
   type        = string
-  default     = "03:00-06:00"
+  default     = "00:00-02:00"
 }
 
-# ---- Auth / KMS ----
 variable "master_username" {
-  description = "Master username"
+  description = "Master username for DocumentDB"
   type        = string
-  default     = "docdb"
-}
-
-variable "default_database" {
-  description = "Database part used in sample connection URIs"
-  type        = string
-  default     = "admin"
+  default     = "docdbadmin"
 }
 
 variable "kms_ssm_key_arn" {
-  description = "KMS key ARN for SSM parameter encryption"
   type        = string
+  description = "ARN of the AWS KMS key used for SSM encryption"
   default     = "alias/aws/ssm"
 }
 
-variable "kms_key_id" {
-  description = "Optional KMS key ARN for DocumentDB storage encryption"
+variable "kms_key_arn" {
   type        = string
-  default     = null
+  description = "ARN of the AWS KMS key used for DocumentDB encryption"
+  default     = ""
 }
 
-# ---- Flags ----
-variable "deletion_protection" {
-  type    = bool
-  default = false
+variable "bastion_security_group_id" {
+  description = "The security group ID of the bastion host to allow access to DocumentDB"
+  type        = string
+  default     = ""
+}
+
+variable "apply_immediately" {
+  description = "Specifies whether any cluster modifications are applied immediately"
+  type        = bool
+  default     = false
 }
 
 variable "skip_final_snapshot" {
-  type    = bool
-  default = false
+  description = "Determines whether a final snapshot is created before the cluster is deleted"
+  type        = bool
+  default     = false
 }
 
 variable "enabled_cloudwatch_logs_exports" {
-  description = "List of enabled log exports (supported: [\"audit\"])"
+  description = "List of log types to export to CloudWatch. Valid values: audit, profiler"
   type        = list(string)
-  default     = []
+  default     = ["audit", "profiler"]
 }
 
-# ---- Cluster parameters ----
-variable "docdb_cluster_parameters" {
-  description = "Map of cluster parameters to set"
-  type        = map(string)
-  default     = {}
+variable "deletion_protection" {
+  description = "If the DB instance should have deletion protection enabled"
+  type        = bool
+  default     = true
+}
+
+variable "auto_minor_version_upgrade" {
+  description = "Indicates that minor engine upgrades will be applied automatically"
+  type        = bool
+  default     = true
 }

@@ -1,7 +1,7 @@
 variable "region" {
   description = "AWS region"
   type        = string
-  default     = "me-south-1"
+  default     = "ap-south-1"
 }
 
 variable "env" {
@@ -126,7 +126,7 @@ variable "ecs_containers" {
       port                 = 8080
       service_domain       = "domaon.example.com"
       envs                 = { ENV_VAR1 = "value1" }
-      secrets              = { SECRET1 = "arn:aws:ssm:me-south-1:awsAccountID:parameter/secret1" }
+      secrets              = { SECRET1 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret1" }
 
       health_check = {
         matcher = "200"
@@ -155,7 +155,7 @@ variable "ecs_containers" {
       port                 = 8081
       service_domain       = "domaon.example.com"
       envs                 = { ENV_VAR2 = "value1" }
-      secrets              = { SECRET2 = "arn:aws:ssm:me-south-1:awsAccountID:parameter/secret2" }
+      secrets              = { SECRET2 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret2" }
 
       health_check = {
         matcher = "200"
@@ -938,7 +938,7 @@ variable "aws_secrets_list" {
   description = "Secrets to create (metadata-only placeholder versions)"
   type = map(object({
     description             = string
-    type                    = string           # "plaintext" | "key_value"
+    type                    = string # "plaintext" | "key_value"
     recovery_window_in_days = optional(number, 30)
     tags                    = optional(map(string), {})
   }))
@@ -948,6 +948,43 @@ variable "aws_secrets_list" {
 ############################################
 #  AWS DocumentDB (Mongo) variables
 ############################################
+
+# ==================== DocumentDB Variables ====================
+variable "docdb_engine_version" {
+  description = "DocumentDB engine version"
+  type        = string
+  default     = "5.0.0"
+}
+
+variable "docdb_family" {
+  description = "DocumentDB parameter group family"
+  type        = string
+  default     = "docdb5.0"
+}
+
+variable "docdb_instance_class" {
+  description = "Instance class for DocumentDB instances"
+  type        = string
+  default     = "db.t3.medium"
+}
+
+variable "docdb_instance_count" {
+  description = "Number of DocumentDB instances to create"
+  type        = number
+  default     = 1
+}
+
+variable "docdb_cluster_parameters" {
+  description = "A map of parameters for DocumentDB cluster"
+  type        = map(string)
+  default = {
+    tls                   = "enabled"
+    ttl_monitor           = "enabled"
+    audit_logs            = "disabled"
+    profiler              = "disabled"
+    profiler_threshold_ms = "100"
+  }
+}
 
 variable "docdb_allow_vpc_cidr_block" {
   description = "Allow full VPC CIDR block for DocumentDB access"
@@ -962,57 +999,63 @@ variable "docdb_allow_vpc_private_cidr_blocks" {
 }
 
 variable "docdb_extra_allowed_cidr_blocks" {
-  description = "Extra allowed CIDR blocks for DocumentDB access"
+  description = "Extra allowed CIDR blocks for DocumentDB"
   type        = string
-  default     = "10.0.0.0/8"
+  default     = ""
 }
 
-variable "docdb_engine_version" {
-  description = "DocumentDB engine version (e.g. 5.0, 4.0)"
-  type        = string
-  default     = "5.0"
-}
-
-variable "docdb_family" {
-  description = "Parameter group family for DocumentDB (e.g. docdb5.0)"
-  type        = string
-  default     = "docdb5.0"
-}
-
-variable "docdb_instance_class" {
-  description = "Instance class for DocumentDB cluster instances"
-  type        = string
-  default     = "db.t3.medium"
-}
-
-variable "docdb_instances_count" {
-  description = "Number of instances in the DocumentDB cluster"
+variable "docdb_backup_retention_period" {
+  description = "The days to retain DocumentDB backups"
   type        = number
-  default     = 1
+  default     = 7
 }
 
 variable "docdb_preferred_maintenance_window" {
-  description = "Weekly maintenance window in UTC"
+  description = "The weekly time range for DocumentDB maintenance (UTC)"
   type        = string
-  default     = "Sat:00:00-Sat:03:00"
+  default     = "sun:03:00-sun:06:00"
 }
 
 variable "docdb_preferred_backup_window" {
-  description = "Daily backup window in UTC"
+  description = "The daily time range for DocumentDB backups (UTC)"
   type        = string
-  default     = "03:00-06:00"
+  default     = "00:00-02:00"
 }
 
 variable "docdb_master_username" {
-  description = "Master username for DocumentDB cluster"
+  description = "Master username for DocumentDB"
   type        = string
-  default     = "docdb"
+  default     = "docdbadmin"
 }
 
-variable "docdb_default_database" {
-  description = "Default database name for connection URIs"
+variable "docdb_kms_ssm_key_arn" {
+  description = "ARN of the AWS KMS key used for SSM encryption for DocumentDB"
   type        = string
-  default     = "admin"
+  default     = "alias/aws/ssm"
+}
+
+variable "docdb_kms_key_arn" {
+  description = "ARN of the AWS KMS key used for DocumentDB encryption"
+  type        = string
+  default     = ""
+}
+
+variable "docdb_apply_immediately" {
+  description = "Specifies whether DocumentDB cluster modifications are applied immediately"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_enabled_cloudwatch_logs_exports" {
+  description = "List of log types to export to CloudWatch for DocumentDB"
+  type        = list(string)
+  default     = ["audit", "profiler"]
+}
+
+variable "docdb_auto_minor_version_upgrade" {
+  description = "Indicates that minor engine upgrades will be applied automatically to DocumentDB"
+  type        = bool
+  default     = true
 }
 
 variable "kms_ssm_key_arn" {
@@ -1039,30 +1082,23 @@ variable "docdb_skip_final_snapshot" {
   default     = false
 }
 
-variable "docdb_enabled_cloudwatch_logs_exports" {
-  description = "List of CloudWatch log exports for DocumentDB (supported: [\"audit\"])"
-  type        = list(string)
-  default     = []
-}
-
-variable "docdb_cluster_parameters" {
-  description = "Map of custom cluster parameters for DocumentDB"
-  type        = map(string)
-  default     = {}
-}
-
 ############################################
 #  Shared existing variable (inherited)
 ############################################
-
-variable "docdb_backup_retention_period" {
-  description = "Days to retain automated backups"
-  type        = number
-  default     = 7
-}
-
 variable "docdb_enabled" {
   description = "Enable DocDB"
   type        = bool
   default     = false
+}
+
+variable "docdb_vpc_cidr" {
+  description = "CIDR block for DocumentDB VPC"
+  type        = string
+  default     = "10.1.0.0/16"
+}
+
+variable "cloudflare_record" {
+  type        = bool
+  description = "Create Cloudflare record or not"
+  default     = true
 }

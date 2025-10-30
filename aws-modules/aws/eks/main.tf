@@ -138,9 +138,9 @@ resource "aws_iam_role_policy_attachment" "AmazonEKS_CNI_Policy" {
 
 # 1) Derive issuer pieces cleanly
 locals {
-  oidc_issuer   = aws_eks_cluster.this.identity[0].oidc[0].issuer # e.g. https://oidc.eks.me-south-1.amazonaws.com/id/1EE48D00...
-  oidc_hostpath = replace(local.oidc_issuer, "https://", "")       # e.g. oidc.eks.me-south-1.amazonaws.com/id/1EE48D00...
-  oidc_id       = element(split("/id/", local.oidc_issuer), 1)     # e.g. 1EE48D00...
+  oidc_issuer   = aws_eks_cluster.this.identity[0].oidc[0].issuer # e.g. https://oidc.eks.ap-south-1.amazonaws.com/id/1EE48D00...
+  oidc_hostpath = replace(local.oidc_issuer, "https://", "")      # e.g. oidc.eks.ap-south-1.amazonaws.com/id/1EE48D00...
+  oidc_id       = element(split("/id/", local.oidc_issuer), 1)    # e.g. 1EE48D00...
 }
 
 # 2) Pull TLS thumbprint for the OIDC provider
@@ -200,8 +200,8 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_policy" {
 
 # Install the official EKS add-on and bind to the IRSA role
 resource "aws_eks_addon" "ebs_csi" {
-  cluster_name                = aws_eks_cluster.this.name
-  addon_name                  = "aws-ebs-csi-driver"
+  cluster_name = aws_eks_cluster.this.name
+  addon_name   = "aws-ebs-csi-driver"
   # You can pin a version if desired, e.g. "v1.30.0-eksbuild.1"
   # addon_version             = var.ebs_csi_addon_version
   service_account_role_arn    = aws_iam_role.ebs_csi_irsa.arn

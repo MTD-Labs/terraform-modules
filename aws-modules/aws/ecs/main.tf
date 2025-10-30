@@ -187,10 +187,6 @@ resource "aws_service_discovery_service" "service_discovery_service" {
 
     routing_policy = "MULTIVALUE"
   }
-
-  health_check_custom_config {
-    failure_threshold = 1
-  }
 }
 
 resource "aws_ecs_service" "container_service" {

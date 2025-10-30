@@ -52,21 +52,6 @@ output "admin_password_ssm_arn" {
   value       = aws_ssm_parameter.admin_password.arn
 }
 
-output "user_passwords" {
-  description = "Map of user passwords"
-  value = {
-    for user in var.users : user => random_password.user_password[user].result
-  }
-  sensitive = true
-}
-
-output "user_password_ssm_arns" {
-  description = "Map of user password ARNs in Parameter Store"
-  value = {
-    for user in var.users : user => aws_ssm_parameter.user_passwords[user].arn
-  }
-}
-
 output "security_group_id" {
   description = "The security group ID of the Amazon MQ broker"
   value       = aws_security_group.mq_security_group.id

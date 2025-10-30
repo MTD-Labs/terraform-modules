@@ -1,6 +1,6 @@
 variable "region" {
   type    = string
-  default = "me-south-1"
+  default = "ap-south-1"
 }
 
 variable "env" {
@@ -86,7 +86,7 @@ variable "containers" {
       port                 = 8080
       service_domain       = "domaon.example.com"
       envs                 = { ENV_VAR1 = "value1" }
-      secrets              = { SECRET1 = "arn:aws:ssm:me-south-1:awsAccountID:parameter/secret1" }
+      secrets              = { SECRET1 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret1" }
 
       health_check = {
         matcher = "200"
@@ -115,7 +115,7 @@ variable "containers" {
       port                 = 8081
       service_domain       = "domaon.example.com"
       envs                 = { ENV_VAR1 = "value1" }
-      secrets              = { SECRET1 = "arn:aws:ssm:me-south-1:awsAccountID:parameter/secret1" }
+      secrets              = { SECRET1 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret1" }
 
       health_check = {
         matcher = "200"

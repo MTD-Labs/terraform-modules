@@ -19,12 +19,12 @@ locals {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.1.2"
+  version = "6.5.0"
 
-  name = "${var.env}-vpc"
-  cidr = var.vpc_cidr
-  azs  = local.azs
-
+  name            = "${var.env}-vpc"
+  region          = var.region
+  cidr            = var.vpc_cidr
+  azs             = local.azs
   public_subnets  = var.public_subnets
   private_subnets = var.private_subnets
 
@@ -49,7 +49,6 @@ module "vpc_endpoints" {
   version            = "5.1.2"
   vpc_id             = module.vpc.vpc_id
   security_group_ids = [data.aws_security_group.default.id]
-
   endpoints = merge(
     {
       s3 = {
@@ -84,6 +83,7 @@ module "vpc_endpoints" {
 }
 
 resource "aws_security_group" "rds" {
+  region      = var.region
   name_prefix = "${var.env}-rds"
   description = "Allow PostgreSQL inbound traffic for VPC"
   vpc_id      = module.vpc.vpc_id

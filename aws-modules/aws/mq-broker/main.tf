@@ -14,22 +14,24 @@ locals {
   }, var.tags)
 }
 
-# --- Passwords & SSM ---
+# Admin password (safe: A–Z, a–z, 0–9 only)
 resource "random_password" "admin_password" {
-  length           = 40
-  special          = true
-  min_special      = 5
-  override_special = "!#$%^&*()-_=+[]{}<>:?"
-  keepers          = { pass_version = 1 }
+  length      = 24
+  special     = false # no punctuation at all
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+  keepers     = { pass_version = 1 } # bump to rotate
 }
 
 resource "random_password" "user_password" {
-  for_each         = var.users
-  length           = 32
-  special          = true
-  min_special      = 5
-  override_special = "!#$%^&*()-_=+[]{}<>:?"
-  keepers          = { pass_version = 1 }
+  for_each    = var.users
+  length      = 24
+  special     = false
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+  keepers     = { pass_version = 1 } # bump to rotate
 }
 
 resource "aws_ssm_parameter" "admin_password" {
