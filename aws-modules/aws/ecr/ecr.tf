@@ -1,10 +1,10 @@
 resource "aws_ecr_repository" "ecr_repo" {
   for_each = toset(var.ecr_repositories)
-  name     = each.value
+  name     = "${each.value}/${var.env}"
 }
 
 resource "aws_iam_user" "ecr_user" {
-  name = "${var.name}-ecr-user"
+  name = "${var.name}-${var.env}-ecr-user"
 }
 
 resource "aws_iam_user_policy" "ecr_user_policy" {

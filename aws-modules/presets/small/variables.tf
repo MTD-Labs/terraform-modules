@@ -511,9 +511,20 @@ variable "aws_secrets_list" {
   description = "Secrets to create (metadata-only placeholder versions)"
   type = map(object({
     description             = string
-    type                    = string           # "plaintext" | "key_value"
+    type                    = string # "plaintext" | "key_value"
     recovery_window_in_days = optional(number, 30)
     tags                    = optional(map(string), {})
   }))
   default = {}
+}
+
+variable "cloudflare_record_enable" {
+  type        = bool
+  description = "Create Cloudflare record or not"
+  default     = true
+}
+
+variable "ami_id" {
+  type    = string
+  default = "ami-082c5ebcf775970ae"
 }

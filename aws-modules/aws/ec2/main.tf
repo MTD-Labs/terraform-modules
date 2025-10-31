@@ -54,13 +54,22 @@ resource "aws_network_interface" "public" {
   )
 }
 
+resource "tls_private_key" "ssh" {
+  algorithm = "ED25519"
+}
+
+resource "aws_key_pair" "this" {
+  key_name   = "${var.env}-${var.name}"
+  public_key = tls_private_key.ssh.public_key_openssh
+}
+
 # Create EC2 instance
 resource "aws_instance" "bastion" {
   ami               = data.aws_ami.ami.id
   ebs_optimized     = true
   instance_type     = var.instance_type
   availability_zone = "${var.region}a"
-
+  key_name          = aws_key_pair.this.key_name
   # Primary network interface at launch (required)
   network_interface {
     network_interface_id = var.enable_public_access ? aws_network_interface.public[0].id : aws_network_interface.private.id
@@ -138,13 +147,10 @@ resource "null_resource" "wait_for_cloud_init" {
     ]
 
     connection {
-      type = "ssh"
-      user = "ubuntu"
-      host = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
-      # Use your local SSH agent for the private key that matches the public key you inject
-      agent = true
-      # If you prefer passing a key directly, use:
-      # private_key = file(var.path_to_private_key)
+      type        = "ssh"
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -181,10 +187,10 @@ resource "null_resource" "copy_grafana_tree" {
     ]
 
     connection {
-      type  = "ssh"
-      user  = "ubuntu"
-      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
-      agent = true
+      type        = "ssh"
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -194,10 +200,10 @@ resource "null_resource" "copy_grafana_tree" {
     destination = "/app" # results in /app/grafana
 
     connection {
-      type  = "ssh"
-      user  = "ubuntu"
-      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
-      agent = true
+      type        = "ssh"
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -207,10 +213,10 @@ resource "null_resource" "copy_grafana_tree" {
     destination = "/app/grafana/.env"
 
     connection {
-      type  = "ssh"
-      user  = "ubuntu"
-      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
-      agent = true
+      type        = "ssh"
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 
@@ -222,10 +228,10 @@ resource "null_resource" "copy_grafana_tree" {
     ]
 
     connection {
-      type  = "ssh"
-      user  = "ubuntu"
-      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
-      agent = true
+      type        = "ssh"
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 }
@@ -251,10 +257,10 @@ resource "null_resource" "grafana_compose_up" {
     ]
 
     connection {
-      type  = "ssh"
-      user  = "ubuntu"
-      host  = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
-      agent = true
+      type        = "ssh"
+      host        = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
+      user        = "ubuntu"
+      private_key = tls_private_key.ssh.private_key_openssh
     }
   }
 }

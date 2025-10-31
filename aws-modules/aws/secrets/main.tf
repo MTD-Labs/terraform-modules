@@ -6,7 +6,7 @@ resource "aws_secretsmanager_secret" "secrets" {
   name                    = each.key
   description             = each.value.description
   recovery_window_in_days = each.value.recovery_window_in_days
-
+  region                  = var.region
   # Optional: choose a KMS key if you don't want the default account key
   # kms_key_id = each.value.kms_key_id
 
@@ -20,3 +20,11 @@ resource "aws_secretsmanager_secret" "secrets" {
 locals {
   allowed_secret_types = ["plaintext", "key_value"]
 }
+
+resource "aws_secretsmanager_secret_version" "initial" {
+  for_each      = var.aws_secrets_list
+  region        = var.region
+  secret_id     = aws_secretsmanager_secret.secrets[each.key].id
+  secret_string = lookup(each.value, "initial_value", "{}")
+}
+

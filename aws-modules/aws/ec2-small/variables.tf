@@ -167,3 +167,9 @@ variable "cloudflare_proxied" {
   description = "Whether to enable Cloudflare proxy (orange cloud)"
   default     = true
 }
+
+variable "cloudflare_record_enable" {
+  type        = bool
+  description = "Create Cloudflare record or not"
+  default     = true
+}

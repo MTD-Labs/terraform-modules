@@ -17,13 +17,13 @@ locals {
     [var.extra_allowed_cidr_blocks]
   ))
 }
-
 resource "random_password" "auth_token" {
-  length  = 20
-  special = false
-  keepers = {
-    pass_version = 1
-  }
+  length      = 24
+  special     = false # no punctuation at all
+  min_upper   = 2
+  min_lower   = 2
+  min_numeric = 2
+  keepers     = { pass_version = 1 } # bump to rotate
 }
 
 resource "aws_ssm_parameter" "auth_token" {

@@ -1,7 +1,7 @@
 variable "region" {
   description = "AWS region"
   type        = string
-  default     = "me-south-1"
+  default     = "ap-south-1"
 }
 
 variable "env" {

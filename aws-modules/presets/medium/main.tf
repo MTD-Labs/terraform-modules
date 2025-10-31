@@ -1,38 +1,4 @@
 locals {
-  # ---------- Cache (Redis) ----------
-  # cache_envs = {
-  #   CACHE_DRIVER     = "redis"
-  #   SESSION_DRIVER   = "redis"
-  #   REDIS_HOST       = format("%s://%s", "tls", module.redis[0].endpoint)
-  #   QUEUE_CONNECTION = "redis"
-  # }
-  # cache_secrets = {
-  #   REDIS_PASSWORD = module.redis[0].auth_token_ssm_arn
-  # }
-
-  # ---------- Database (Postgres) ----------
-  # db_envs = {
-  #   DB_CONNECTION = "pgsql"
-  #   DB_HOST       = var.postgres_rds_type == "rds" ? module.postgres[0].rds_instance_address[0] : module.postgres[0].cluster_endpoint[0]
-  #   DB_PORT       = "5432"
-  #   DB_DATABASE   = var.postgres_database_name
-  #   DB_USERNAME   = var.postgres_master_username
-  # }
-  # db_secrets = {
-  #   DB_PASSWORD = module.postgres[0].rds_instance_master_password_ssm_arn
-  # }
-
-  # # ---------- Amazon MQ (conditional) ----------
-  # mq_envs = var.mq_enabled ? {
-  #   BROKER_URL      = module.mq[0].broker_endpoints.stomp_ssl
-  #   BROKER_USERNAME = var.mq_admin_username
-  #   BROKER_TYPE     = "activemq"
-  # } : {}
-
-  # mq_secrets = var.mq_enabled ? {
-  #   BROKER_PASSWORD = module.mq[0].admin_password_ssm_arn
-  # } : {}
-
   # ---------- Public buckets for CDN ----------
   public_bucket_list = [
     for bucket in var.s3_bucket_list : {
@@ -66,10 +32,13 @@ locals {
   ]
 }
 
+data "aws_caller_identity" "current" {}
 
 module "vpc" {
   source = "../../aws/vpc"
-
+  providers = {
+    aws.main = aws.main
+  }
   region = var.region
   env    = var.env
 
@@ -78,8 +47,6 @@ module "vpc" {
 
   ecs_enabled      = var.ecs_enabled
   postgres_enabled = var.postgres_enabled
-
-
 }
 
 module "alb" {
@@ -103,9 +70,7 @@ module "alb" {
 
   idle_timeout = var.alb_idle_timeout
 
-  #cdn_bucket_names = [module.s3[1].s3_bucket_bucket_regional_domain_name]
-  lambda_edge_enabled = var.lambda_edge_enabled
-  ############# If using docker image for lambda, set lambda_edge_enabled to `false`:
+  lambda_edge_enabled    = var.lambda_edge_enabled
   cdn_enabled            = var.cdn_enabled
   cdn_buckets            = local.public_bucket_list
   cdn_optimize_images    = var.cdn_optimize_images
@@ -126,8 +91,7 @@ module "ecr" {
   source = "../../aws/ecr"
 
   providers = {
-    aws.main      = aws.main
-    aws.us_east_1 = aws.us_east_1
+    aws.main = aws.main
   }
 
   region = var.region
@@ -136,7 +100,6 @@ module "ecr" {
   tags   = var.tags
 
   ecr_repositories = var.ecr_repositories
-
 }
 
 module "ecs" {
@@ -176,7 +139,6 @@ module "ecs" {
 
   alb_security_group_id = module.alb.alb_aws_security_group_id
   loki_instance_arch    = var.loki_instance_arch
-
 }
 
 module "postgres" {
@@ -252,7 +214,6 @@ module "redis" {
   allow_vpc_cidr_block                 = var.redis_allow_vpc_cidr_block
   allow_vpc_private_cidr_blocks        = var.redis_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks            = var.redis_extra_allowed_cidr_blocks
-
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_redis_policy" {
@@ -281,12 +242,15 @@ module "ec2" {
   grafana_domain  = var.grafana_domain
   ecr_user_id     = var.ecr_user_id
 
+  depends_on = [module.secrets]
 }
 
 module "s3" {
   for_each = { for idx, bucket in var.s3_bucket_list : idx => bucket }
   source   = "../../aws/s3"
-
+  providers = {
+    aws.main = aws.main
+  }
   region = var.region
   env    = var.env
   tags   = var.tags
@@ -299,6 +263,9 @@ module "s3" {
 module "cloudtrail" {
   count  = var.cloudtrail_enabled == true ? 1 : 0
   source = "../../aws/cloudtrail"
+  providers = {
+    aws.main = aws.main
+  }
 
   region = var.region
   env    = var.env
@@ -363,51 +330,11 @@ module "webhook" {
   backup_schedule       = var.backup_schedule
 }
 
-module "mq" {
-  count  = var.mq_enabled == true ? 1 : 0
-  source = "../../aws/mq-broker"
-
-  region = var.region
-  env    = var.env
-  name   = var.name
-  tags   = var.tags
-
-  vpc_id                  = module.vpc.vpc_id
-  vpc_subnets             = module.vpc.private_subnets
-  vpc_cidr_block          = module.vpc.vpc_cidr_block
-  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
-
-  engine_type                = var.mq_engine_type
-  engine_version             = var.mq_engine_version
-  instance_type              = var.mq_instance_type
-  deployment_mode            = var.mq_deployment_mode
-  auto_minor_version_upgrade = var.mq_auto_minor_version_upgrade
-  authentication_strategy    = var.mq_authentication_strategy
-  admin_username             = var.mq_admin_username
-  users                      = var.mq_users
-
-  enable_general_logging = var.mq_enable_general_logging
-  enable_audit_logging   = var.mq_enable_audit_logging
-
-  maintenance_day_of_week = var.mq_maintenance_day_of_week
-  maintenance_time_of_day = var.mq_maintenance_time_of_day
-  maintenance_time_zone   = var.mq_maintenance_time_zone
-
-  kms_ssm_key_arn = var.mq_kms_ssm_key_arn
-  kms_mq_key_arn  = var.mq_kms_mq_key_arn
-
-  bastion_security_group_id     = module.ec2[0].security_group_id
-  additional_security_group_ids = var.mq_additional_security_group_ids
-  allow_vpc_cidr_block          = var.mq_allow_vpc_cidr_block
-  allow_vpc_private_cidr_blocks = var.mq_allow_vpc_private_cidr_blocks
-  extra_allowed_cidr_blocks     = var.mq_extra_allowed_cidr_blocks
-}
-
 module "eks" {
   source = "../../aws/eks"
   count  = var.eks_enabled == true ? 1 : 0
   providers = {
-    aws = aws.main
+    aws.main = aws.main
   }
 
   region                  = var.region
@@ -438,12 +365,57 @@ resource "null_resource" "wait_for_cluster" {
   depends_on = [module.eks[0]]
 }
 
+# Провайдер Kubernetes для EKS
+provider "kubernetes" {
+  alias = "eks"
+
+  host                   = var.eks_enabled && length(module.eks) > 0 ? module.eks[0].cluster_endpoint : null
+  cluster_ca_certificate = var.eks_enabled && length(module.eks) > 0 ? base64decode(module.eks[0].cluster_certificate_authority_data) : null
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args = compact([
+      "eks",
+      "get-token",
+      "--cluster-name",
+      var.eks_enabled && length(module.eks) > 0 ? module.eks[0].cluster_name : "",
+      "--output=json"
+    ])
+  }
+}
+
+# Провайдер Helm для EKS
+provider "helm" {
+  alias = "eks"
+
+  kubernetes = {
+    host                   = var.eks_enabled && length(module.eks) > 0 ? module.eks[0].cluster_endpoint : null
+    cluster_ca_certificate = var.eks_enabled && length(module.eks) > 0 ? base64decode(module.eks[0].cluster_certificate_authority_data) : null
+
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args = compact([
+        "eks",
+        "get-token",
+        "--cluster-name",
+        var.eks_enabled && length(module.eks) > 0 ? module.eks[0].cluster_name : "",
+        "--output=json"
+      ])
+    }
+  }
+}
+
 module "ingress" {
+  count  = var.eks_enabled ? 1 : 0
   source = "../../aws/ingress-controller"
-  
+
   providers = {
-    aws.main       = aws.main
-    aws.us_east_1  = aws.us_east_1
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
   }
 
   env              = var.env
@@ -454,15 +426,18 @@ module "ingress" {
   subnets          = module.vpc.private_subnets
   security_groups  = [module.eks[0].cluster_security_group_id]
   domain_name      = var.domain_name
-  eks_enabled =  var.eks_enabled
-  
+  eks_enabled      = var.eks_enabled
 }
 
 module "grafana" {
+  count  = var.eks_enabled ? 1 : 0
   source = "../../aws/monitoring/grafana"
+
   providers = {
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
   }
 
   env              = var.env
@@ -472,15 +447,18 @@ module "grafana" {
   values_file_path = "${path.root}/helm-charts/grafana"
   subnets          = module.vpc.private_subnets
   host             = var.grafana_host
-  eks_enabled =  var.eks_enabled
-
+  eks_enabled      = var.eks_enabled
 }
 
 module "promtail" {
+  count  = var.eks_enabled ? 1 : 0
   source = "../../aws/monitoring/promtail"
+
   providers = {
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
   }
 
   env              = var.env
@@ -488,17 +466,19 @@ module "promtail" {
   cluster_endpoint = module.eks[0].cluster_endpoint
   cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
   values_file_path = "${path.root}/helm-charts/promtail"
-
-  tenant_id = var.tenant_id
-  eks_enabled =  var.eks_enabled
-
+  tenant_id        = var.tenant_id
+  eks_enabled      = var.eks_enabled
 }
 
 module "loki" {
+  count  = var.eks_enabled ? 1 : 0
   source = "../../aws/monitoring/loki"
+
   providers = {
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
   }
 
   env              = var.env
@@ -508,39 +488,171 @@ module "loki" {
   values_file_path = "${path.root}/helm-charts/loki"
   cluster_oidc_id  = module.eks[0].cluster_oidc_id
   loki_bucket_name = var.loki_bucket_name
-  eks_enabled =  var.eks_enabled
-  region          = var.region
+  eks_enabled      = var.eks_enabled
+  region           = var.region
 }
 
 module "metric-server" {
+  count  = var.eks_enabled ? 1 : 0
   source = "../../aws/monitoring/metric-server"
+
   providers = {
     aws.main      = aws.main
     aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
   }
+
   env              = var.env
   cluster_name     = module.eks[0].cluster_name
   cluster_endpoint = module.eks[0].cluster_endpoint
   cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
-  eks_enabled =  var.eks_enabled
-
+  eks_enabled      = var.eks_enabled
 }
 
 module "secrets" {
   source = "../../aws/secrets"
-
+  providers = {
+    aws.main = aws.main
+  }
+  region           = var.region
   aws_secrets_list = var.aws_secrets_list
 }
 
+module "docdb" {
+  count  = var.docdb_enabled ? 1 : 0
+  source = "../../aws/docdb"
+
+  providers = {
+    aws.main = aws.main
+  }
+
+  env  = var.env
+  name = var.name
+  tags = var.tags
+
+  vpc_id                  = module.vpc.vpc_id
+  vpc_subnets             = module.vpc.private_subnets
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+
+  engine_version                = var.docdb_engine_version
+  family                        = var.docdb_family
+  instance_class                = var.docdb_instance_class
+  instance_count                = var.docdb_instance_count
+  cluster_parameters            = var.docdb_cluster_parameters
+  allow_vpc_cidr_block          = var.docdb_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks = var.docdb_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks     = var.docdb_extra_allowed_cidr_blocks
+  backup_retention_period       = var.docdb_backup_retention_period
+  preferred_maintenance_window  = var.docdb_preferred_maintenance_window
+  preferred_backup_window       = var.docdb_preferred_backup_window
+  master_username               = var.docdb_master_username
+
+  kms_ssm_key_arn           = var.docdb_kms_ssm_key_arn
+  kms_key_arn               = var.docdb_kms_key_arn
+  bastion_security_group_id = var.bastion_enabled ? module.ec2[0].security_group_id : ""
+
+  apply_immediately               = var.docdb_apply_immediately
+  skip_final_snapshot             = var.docdb_skip_final_snapshot
+  enabled_cloudwatch_logs_exports = var.docdb_enabled_cloudwatch_logs_exports
+  deletion_protection             = var.docdb_deletion_protection
+  auto_minor_version_upgrade      = var.docdb_auto_minor_version_upgrade
+}
+
+# IAM policy for ECS to access DocumentDB (if ECS is enabled)
+resource "aws_iam_policy" "ecs_docdb_access" {
+  count = var.docdb_enabled && var.ecs_enabled ? 1 : 0
+
+  name        = "${var.env}-${var.name}-docdb-access"
+  description = "Access to DocumentDB for ECS tasks"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters"
+        ]
+        Resource = [
+          "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${var.env}-docdb-${var.name}-master-password"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "docdb:DescribeDBClusters",
+          "docdb:DescribeDBInstances",
+          "docdb:ListTagsForResource"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_docdb_policy" {
+  count      = var.docdb_enabled && var.ecs_enabled ? 1 : 0
+  role       = module.ecs[0].ecs_task_exec_role_name
+  policy_arn = aws_iam_policy.ecs_docdb_access[0].arn
+}
+
+module "mq" {
+  count  = var.mq_enabled ? 1 : 0
+  source = "../../aws/mq-broker"
+
+  providers = {
+    aws.main = aws.main
+  }
+
+  env  = var.env
+  name = var.name
+  tags = var.tags
+
+  vpc_id                  = module.vpc.vpc_id
+  vpc_subnets             = [module.vpc.private_subnets[0]]
+  vpc_cidr_block          = module.vpc.vpc_cidr_block
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+
+  engine_type                = var.mq_engine_type
+  engine_version             = var.mq_engine_version
+  instance_type              = var.mq_instance_type
+  deployment_mode            = var.mq_deployment_mode
+  auto_minor_version_upgrade = var.mq_auto_minor_version_upgrade
+  authentication_strategy    = var.mq_authentication_strategy
+  admin_username             = var.mq_admin_username
+  # users                      = var.mq_users
+
+  enable_general_logging = var.mq_enable_general_logging
+  enable_audit_logging   = var.mq_enable_audit_logging
+
+  maintenance_day_of_week = var.mq_maintenance_day_of_week
+  maintenance_time_of_day = var.mq_maintenance_time_of_day
+  maintenance_time_zone   = var.mq_maintenance_time_zone
+
+  kms_ssm_key_arn = var.mq_kms_ssm_key_arn
+  kms_mq_key_arn  = var.mq_kms_mq_key_arn
+
+  bastion_security_group_id     = var.bastion_enabled ? module.ec2[0].security_group_id : ""
+  additional_security_group_ids = var.mq_additional_security_group_ids
+  allow_vpc_cidr_block          = var.mq_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks = var.mq_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks     = var.mq_extra_allowed_cidr_blocks
+}
+
+# IAM policy for ECS to access MQ (if ECS is enabled)
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_policy" {
-  count      = var.mq_enabled == true ? 1 : 0
+  count      = var.mq_enabled && var.ecs_enabled ? 1 : 0
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonMQFullAccess"
 }
 
 # Optional: IAM policy for specific MQ access if needed
 resource "aws_iam_policy" "mq_read_only" {
-  count = var.mq_enabled == true && var.mq_ecs_read_only_access ? 1 : 0
+  count = var.mq_enabled && var.mq_ecs_read_only_access ? 1 : 0
 
   name        = "${var.env}-${var.name}-mq-read-only"
   description = "Read-only access to Amazon MQ for ${var.env} environment"
@@ -560,52 +672,13 @@ resource "aws_iam_policy" "mq_read_only" {
       }
     ]
   })
+
+  tags = var.tags
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_read_only" {
-  count = var.mq_enabled == true && var.mq_ecs_read_only_access ? 1 : 0
+  count = var.mq_enabled && var.mq_ecs_read_only_access ? 1 : 0
 
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = aws_iam_policy.mq_read_only[0].arn
-}
-
-module "docdb" {
-  count  = var.docdb_enabled ? 1 : 0
-  source = "../../aws/docdb"
-
-  region = var.region
-  env    = var.env
-  name   = var.name
-  tags   = var.tags
-
-  vpc_id                  = module.vpc.vpc_id
-  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
-  vpc_subnets             = module.vpc.database_subnets
-  vpc_subnet_group_name   = module.vpc.database_subnet_group_name
-
-  bastion_security_group_id      = module.ec2[0].security_group_id
-  allow_vpc_cidr_block           = var.docdb_allow_vpc_cidr_block
-  allow_vpc_private_cidr_blocks  = var.docdb_allow_vpc_private_cidr_blocks
-  extra_allowed_cidr_blocks      = var.docdb_extra_allowed_cidr_blocks
-
-  engine_version                 = var.docdb_engine_version
-  family                         = var.docdb_family
-  instance_class                 = var.docdb_instance_class
-  instances_count                = var.docdb_instances_count
-
-  backup_retention_period        = var.docdb_backup_retention_period
-  preferred_maintenance_window   = var.docdb_preferred_maintenance_window
-  preferred_backup_window        = var.docdb_preferred_backup_window
-
-  master_username                = var.docdb_master_username
-  default_database               = var.docdb_default_database
-
-  kms_ssm_key_arn                = var.kms_ssm_key_arn
-  kms_key_id                     = var.docdb_kms_key_id
-
-  deletion_protection            = var.docdb_deletion_protection
-  skip_final_snapshot            = var.docdb_skip_final_snapshot
-  enabled_cloudwatch_logs_exports = var.docdb_enabled_cloudwatch_logs_exports
-
-  docdb_cluster_parameters       = var.docdb_cluster_parameters
 }

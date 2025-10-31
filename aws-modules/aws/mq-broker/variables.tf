@@ -87,7 +87,7 @@ variable "auto_minor_version_upgrade" {
 variable "authentication_strategy" {
   description = "Authentication strategy for the broker (SIMPLE or LDAP)"
   type        = string
-  default     = "SIMPLE"
+  default     = "simple"
 }
 
 variable "admin_username" {

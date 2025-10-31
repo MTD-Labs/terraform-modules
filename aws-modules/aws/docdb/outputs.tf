@@ -1,69 +1,94 @@
-# Cluster identifiers
+# DocumentDB Cluster outputs
 output "cluster_arn" {
-  description = "ARN of the DocumentDB cluster"
-  value       = aws_docdb_cluster.this.arn
+  description = "Amazon Resource Name (ARN) of the DocumentDB cluster"
+  value       = aws_docdb_cluster.docdb.arn
 }
 
 output "cluster_id" {
-  description = "ID of the DocumentDB cluster"
-  value       = aws_docdb_cluster.this.id
+  description = "The DocumentDB Cluster Identifier"
+  value       = aws_docdb_cluster.docdb.id
 }
 
-# Endpoints / port
+output "cluster_resource_id" {
+  description = "The DocumentDB Cluster Resource ID"
+  value       = aws_docdb_cluster.docdb.cluster_resource_id
+}
+
 output "cluster_endpoint" {
-  description = "Writer endpoint for the cluster"
-  value       = aws_docdb_cluster.this.endpoint
+  description = "Endpoint for the DocumentDB cluster"
+  value       = aws_docdb_cluster.docdb.endpoint
 }
 
 output "cluster_reader_endpoint" {
-  description = "Reader endpoint for the cluster"
-  value       = aws_docdb_cluster.this.reader_endpoint
+  description = "A read-only endpoint for the DocumentDB cluster"
+  value       = aws_docdb_cluster.docdb.reader_endpoint
 }
 
 output "cluster_port" {
-  description = "Port the cluster listens on"
-  value       = aws_docdb_cluster.this.port
+  description = "The DocumentDB port"
+  value       = aws_docdb_cluster.docdb.port
 }
 
-# Instances
-output "instance_endpoints" {
-  description = "Endpoints for each cluster instance"
-  value       = [for i in aws_docdb_cluster_instance.this : i.endpoint]
+output "cluster_members" {
+  description = "List of DocumentDB instances that are part of this cluster"
+  value       = aws_docdb_cluster.docdb.cluster_members
 }
 
-# Auth (sensitive)
-output "master_username" {
-  description = "Master username"
-  value       = var.master_username
+output "cluster_master_username" {
+  description = "The DocumentDB master username"
+  value       = aws_docdb_cluster.docdb.master_username
   sensitive   = true
 }
 
-output "master_password" {
-  description = "Master password"
+output "cluster_master_password" {
+  description = "The DocumentDB master password"
   value       = random_password.master.result
   sensitive   = true
 }
 
-output "master_password_ssm_arn" {
-  description = "SSM Parameter ARN storing the master password"
+output "cluster_master_password_ssm_arn" {
+  description = "The DocumentDB master password ARN in Parameter Store"
   value       = aws_ssm_parameter.master_password.arn
 }
 
-# Security Group
+output "cluster_hosted_zone_id" {
+  description = "The Route53 Hosted Zone ID of the endpoint"
+  value       = aws_docdb_cluster.docdb.hosted_zone_id
+}
+
 output "security_group_id" {
-  description = "Security Group ID used by the cluster"
-  value       = aws_security_group.docdb_sg.id
+  description = "The security group ID of the DocumentDB cluster"
+  value       = aws_security_group.docdb_security_group.id
 }
 
-# Convenience: ready-to-use Mongo connection URIs (TLS required by DocDB)
-output "writer_mongodb_uri" {
-  description = "MongoDB URI for writer endpoint (TLS, replicaSet, retryWrites=false)"
-  value       = "mongodb://${var.master_username}:${random_password.master.result}@${aws_docdb_cluster.this.endpoint}:${aws_docdb_cluster.this.port}/${var.default_database}?replicaSet=rs0&readPreference=primary&retryWrites=false&tls=true"
-  sensitive   = true
+output "subnet_group_name" {
+  description = "The DocumentDB subnet group name"
+  value       = aws_docdb_subnet_group.docdb.name
 }
 
-output "reader_mongodb_uri" {
-  description = "MongoDB URI for reader endpoint (TLS, prefer readers)"
-  value       = "mongodb://${var.master_username}:${random_password.master.result}@${aws_docdb_cluster.this.reader_endpoint}:${aws_docdb_cluster.this.port}/${var.default_database}?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false&tls=true"
+output "cluster_instances" {
+  description = "Map of cluster instance attributes"
+  value = {
+    for idx, instance in aws_docdb_cluster_instance.docdb_instances :
+    idx => {
+      id                = instance.id
+      arn               = instance.arn
+      identifier        = instance.identifier
+      endpoint          = instance.endpoint
+      instance_class    = instance.instance_class
+      availability_zone = instance.availability_zone
+      promotion_tier    = instance.promotion_tier
+    }
+  }
+}
+
+output "connection_string" {
+  description = "DocumentDB connection string (without credentials)"
+  value       = "mongodb://${aws_docdb_cluster.docdb.endpoint}:${aws_docdb_cluster.docdb.port}/?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
+}
+
+output "connection_string_with_credentials" {
+  description = "DocumentDB connection string with credentials"
+  value       = "mongodb://${aws_docdb_cluster.docdb.master_username}:${random_password.master.result}@${aws_docdb_cluster.docdb.endpoint}:${aws_docdb_cluster.docdb.port}/?replicaSet=rs0&readPreference=secondaryPreferred&retryWrites=false"
   sensitive   = true
 }

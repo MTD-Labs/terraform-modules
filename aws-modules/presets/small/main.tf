@@ -45,7 +45,9 @@ module "alb" {
 
 module "vpc" {
   source = "../../aws/vpc"
-
+  providers = {
+    aws.main = aws.main
+  }
   region = var.region
   env    = var.env
 
@@ -59,8 +61,7 @@ module "ecr" {
   source = "../../aws/ecr"
 
   providers = {
-    aws.main      = aws.main
-    aws.us_east_1 = aws.us_east_1
+    aws.main = aws.main
   }
 
   region = var.region
@@ -75,6 +76,9 @@ module "ecr" {
 module "ec2" {
   count  = var.bastion_enabled == true ? 1 : 0
   source = "../../aws/ec2-small"
+  providers = {
+    aws.main = aws.main
+  }
 
   region = var.region
   env    = var.env
@@ -104,12 +108,20 @@ module "ec2" {
 
   cloudflare_proxied = var.cloudflare_proxied
   cloudflare_zone    = var.cloudflare_zone
-  
+
+  depends_on               = [module.secrets]
+  cloudflare_record_enable = var.cloudflare_record_enable
+  ami_id                   = var.ami_id
+
 }
 
 module "s3" {
   for_each = { for idx, bucket in var.s3_bucket_list : idx => bucket }
   source   = "../../aws/s3"
+
+  providers = {
+    aws.main = aws.main
+  }
 
   region = var.region
   env    = var.env
@@ -123,7 +135,9 @@ module "s3" {
 module "cloudtrail" {
   count  = var.cloudtrail_enabled == true ? 1 : 0
   source = "../../aws/cloudtrail"
-
+  providers = {
+    aws.main = aws.main
+  }
   region = var.region
   env    = var.env
   name   = var.name
@@ -134,6 +148,10 @@ module "cloudtrail" {
 
 module "secrets" {
   source = "../../aws/secrets"
+  region = var.region
+  providers = {
+    aws.main = aws.main
+  }
 
   aws_secrets_list = var.aws_secrets_list
 }

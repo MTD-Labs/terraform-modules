@@ -83,7 +83,7 @@ resource "aws_cloudfront_distribution" "default" {
 
 resource "aws_cloudfront_origin_access_control" "default" {
   count                             = var.cdn_enabled ? 1 : 0
-  name                              = "default-${var.env}"
+  name                              = "default-${var.env}-${var.name}"
   description                       = "Default Policy"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -99,6 +99,9 @@ resource "cloudflare_record" "cloudfront_domain" {
   type    = "CNAME"
   ttl     = 300
   proxied = false
+  lifecycle {
+    ignore_changes = [content] # Or prevent replacement
+  }
 
   depends_on = [
     aws_cloudfront_distribution.default,
