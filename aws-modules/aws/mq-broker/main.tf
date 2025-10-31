@@ -12,6 +12,10 @@ locals {
     Env        = var.env
     tf-managed = true
   }, var.tags)
+    allowed_cidr_blocks = compact(concat(
+      var.allow_vpc_private_cidr_blocks ? var.vpc_private_cidr_blocks : [],
+      var.extra_allowed_cidr_blocks != "" ? [var.extra_allowed_cidr_blocks] : []
+    ))
 }
 
 # Admin password (safe: A–Z, a–z, 0–9 only)
@@ -60,13 +64,6 @@ resource "aws_security_group" "mq_security_group" {
   vpc_id      = var.vpc_id
   tags        = local.tags
 
-  # AMQP over TLS
-  ingress {
-    from_port   = 5671
-    to_port     = 5671
-    protocol    = "tcp"
-    cidr_blocks = ["172.31.0.0/16"]
-  }
 
   # Web console via 443 on Amazon MQ for RabbitMQ
   ingress {
@@ -74,6 +71,14 @@ resource "aws_security_group" "mq_security_group" {
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["172.31.0.0/16"]
+  }
+
+  ingress {
+    from_port       = 5671
+    to_port         = 5671
+    protocol        = "tcp"
+    cidr_blocks     = local.allowed_cidr_blocks
+    security_groups = var.bastion_security_group_id != "" ? [var.bastion_security_group_id] : []
   }
 
   egress {
