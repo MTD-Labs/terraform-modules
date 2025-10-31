@@ -644,7 +644,7 @@ variable "mq_auto_minor_version_upgrade" {
 variable "mq_authentication_strategy" {
   description = "Authentication strategy for the broker (SIMPLE or LDAP)"
   type        = string
-  default     = "SIMPLE"
+  default     = "simple"
 }
 
 variable "mq_admin_username" {
@@ -978,7 +978,7 @@ variable "docdb_cluster_parameters" {
   description = "A map of parameters for DocumentDB cluster"
   type        = map(string)
   default = {
-    tls                   = "enabled"
+    tls                   = "disabled"
     ttl_monitor           = "enabled"
     audit_logs            = "disabled"
     profiler              = "disabled"

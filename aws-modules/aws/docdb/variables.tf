@@ -58,7 +58,7 @@ variable "cluster_parameters" {
   description = "A map of parameters for DocumentDB cluster"
   type        = map(string)
   default = {
-    tls                   = "enabled"
+    tls                   = "disabled"
     ttl_monitor           = "enabled"
     audit_logs            = "disabled"
     profiler              = "disabled"
