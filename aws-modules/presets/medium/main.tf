@@ -217,7 +217,7 @@ module "redis" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_redis_policy" {
-  count      = var.redis_enabled == true ? 1 : 0
+  count      = var.redis_enabled && var.ecs_enabled ? 1 : 0
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
 }

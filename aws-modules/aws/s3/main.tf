@@ -23,7 +23,7 @@ locals {
 
 module "s3_bucket" {
   source  = "terraform-aws-modules/s3-bucket/aws"
-  version = "= 3.15.1"
+  version = "= 5.8.2"
 
   bucket                  = var.name
   acl                     = var.public ? "public-read" : "private"
