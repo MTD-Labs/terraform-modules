@@ -176,13 +176,13 @@ module "postgres" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_postgres_policy" {
-  count      = var.postgres_enabled == true ? 1 : 0
+  count      = var.postgres_enabled && var.ecs_enabled ? 1 : 0
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonRDSDataFullAccess"
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_secretmanager_policy" {
-  count      = var.postgres_enabled == true ? 1 : 0
+  count      = var.postgres_enabled && var.ecs_enabled ? 1 : 0
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
 }
@@ -677,7 +677,7 @@ resource "aws_iam_policy" "mq_read_only" {
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_mq_read_only" {
-  count = var.mq_enabled && var.mq_ecs_read_only_access ? 1 : 0
+  count = var.mq_enabled && var.ecs_enabled && var.mq_ecs_read_only_access ? 1 : 0
 
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = aws_iam_policy.mq_read_only[0].arn
