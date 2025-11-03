@@ -1102,3 +1102,9 @@ variable "cloudflare_record" {
   description = "Create Cloudflare record or not"
   default     = true
 }
+
+variable "bastion_instance_type" {
+  type        = string
+  description = "Instance type for the created machine"
+  default     = "t3.micro"
+}

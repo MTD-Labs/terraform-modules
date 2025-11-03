@@ -64,20 +64,11 @@ resource "aws_security_group" "mq_security_group" {
   vpc_id      = var.vpc_id
   tags        = local.tags
 
-
-  # Web console via 443 on Amazon MQ for RabbitMQ
   ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["172.31.0.0/16"]
-  }
-
-  ingress {
-    from_port       = 5671
-    to_port         = 5671
-    protocol        = "tcp"
-    cidr_blocks     = local.allowed_cidr_blocks
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = local.allowed_cidr_blocks
     security_groups = var.bastion_security_group_id != "" ? [var.bastion_security_group_id] : []
   }
 

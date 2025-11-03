@@ -220,7 +220,7 @@ resource "aws_ecs_service" "container_service" {
   }
 
   lifecycle {
-    ignore_changes = [desired_count]
+    ignore_changes = [task_definition, desired_count]
   }
 }
 

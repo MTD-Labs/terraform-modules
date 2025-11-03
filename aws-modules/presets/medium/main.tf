@@ -239,11 +239,11 @@ module "ec2" {
 
   ssh_authorized_keys_secret = var.bastion_ssh_authorized_keys_secret
   allowed_tcp_ports          = ["22", "80", "443"]
-
+  allowed_udp_ports          = ["51820"]
   grafana_enabled = var.grafana_enabled
   grafana_domain  = var.grafana_domain
   ecr_user_id     = var.ecr_user_id
-
+  instance_type   = var.bastion_instance_type
   depends_on = [module.secrets]
 }
 
