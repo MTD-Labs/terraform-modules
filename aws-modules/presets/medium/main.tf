@@ -214,6 +214,8 @@ module "redis" {
   allow_vpc_cidr_block                 = var.redis_allow_vpc_cidr_block
   allow_vpc_private_cidr_blocks        = var.redis_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks            = var.redis_extra_allowed_cidr_blocks
+
+  depends_on = [module.vpc]
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_redis_policy" {

@@ -37,7 +37,7 @@ resource "aws_ssm_parameter" "auth_token" {
 
 module "redis" {
   source                     = "cloudposse/elasticache-redis/aws"
-  version                    = "0.53.0"
+  version                    = "2.0.0"
   name                       = local.name
   engine_version             = var.engine_version
   family                     = var.family
