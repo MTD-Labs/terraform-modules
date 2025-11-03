@@ -104,7 +104,7 @@ resource "aws_mq_broker" "amazon_mq" {
   subnet_ids = var.vpc_subnets
 
   # RabbitMQ supports SIMPLE only
-  authentication_strategy = "SIMPLE"
+  authentication_strategy = var.authentication_strategy
 
   # Encryption
   encryption_options {
