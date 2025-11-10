@@ -93,3 +93,21 @@ variable "domain_name" {
   type        = string
   default     = "example.com"
 }
+
+variable "external_secrets_allowed_secrets" {
+  description = "List of ARNs of secrets that External Secrets Operator can access. If null, allows access to all secrets in the account."
+  type        = list(string)
+  default     = null
+}
+
+variable "install_external_secrets" {
+  description = "Whether to install External Secrets Operator via Helm"
+  type        = bool
+  default     = true
+}
+
+variable "external_secrets_chart_version" {
+  description = "Helm chart version for External Secrets Operator"
+  type        = string
+  default     = "0.9.11"
+}

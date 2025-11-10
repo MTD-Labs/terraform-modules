@@ -822,6 +822,18 @@ variable "cloudflare_proxied" {
   default     = false
 }
 
+variable "cloudflare_ttl" {
+  type        = number
+  description = "Record TTL"
+  default     = 300
+}
+
+variable "create_cloudflare_record" {
+  type        = bool
+  description = "Create Cloudflare Record for Domains"
+  default     = true
+}
+
 variable "alb_security_group_id" {
   type        = string
   description = "ALB SG ID to Allow Loki"
@@ -1107,4 +1119,85 @@ variable "bastion_instance_type" {
   type        = string
   description = "Instance type for the created machine"
   default     = "t3.micro"
+}
+
+variable "app_name" {
+  type    = string
+  default = null
+}
+
+
+variable "eks_namespace" {
+  type    = string
+  default = null
+}
+
+variable "eks_apps" {
+  description = "List of application names to be deployed on EKS via Helm."
+  type        = list(string)
+  default = [
+    "trendex-backend",
+    "trendex-public-frontend"
+  ]
+}
+
+variable "chart_name" {
+  type    = string
+  default = null
+}
+
+variable "chart_version" {
+  type    = string
+  default = null
+}
+
+# Add these to your existing variables.tf in the main module
+
+# External Secrets Operator variables
+variable "eks_install_external_secrets" {
+  description = "Whether to install External Secrets Operator"
+  type        = bool
+  default     = true
+}
+
+variable "eks_external_secrets_chart_version" {
+  description = "Helm chart version for External Secrets Operator"
+  type        = string
+  default     = "0.9.11"
+}
+
+variable "eks_external_secrets_allowed_secrets" {
+  description = "List of ARNs of secrets that External Secrets Operator can access"
+  type        = list(string)
+  default     = null
+}
+
+variable "eks_create_secret_store" {
+  description = "Whether to create a default SecretStore"
+  type        = bool
+  default     = true
+}
+
+variable "eks_secret_store_name" {
+  description = "Name of the SecretStore"
+  type        = string
+  default     = "aws-secrets-manager"
+}
+
+variable "eks_secret_store_namespace" {
+  description = "Namespace for the SecretStore"
+  type        = string
+  default     = "external-secrets"
+}
+
+variable "eks_create_cluster_secret_store" {
+  description = "Whether to create a ClusterSecretStore"
+  type        = bool
+  default     = true
+}
+
+variable "eks_cluster_secret_store_name" {
+  description = "Name of the ClusterSecretStore"
+  type        = string
+  default     = "aws-secrets-manager-cluster"
 }

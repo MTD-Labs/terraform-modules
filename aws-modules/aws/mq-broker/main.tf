@@ -12,10 +12,10 @@ locals {
     Env        = var.env
     tf-managed = true
   }, var.tags)
-    allowed_cidr_blocks = compact(concat(
-      var.allow_vpc_private_cidr_blocks ? var.vpc_private_cidr_blocks : [],
-      var.extra_allowed_cidr_blocks != "" ? [var.extra_allowed_cidr_blocks] : []
-    ))
+  allowed_cidr_blocks = compact(concat(
+    var.allow_vpc_private_cidr_blocks ? var.vpc_private_cidr_blocks : [],
+    var.extra_allowed_cidr_blocks != "" ? [var.extra_allowed_cidr_blocks] : []
+  ))
 }
 
 # Admin password (safe: A–Z, a–z, 0–9 only)
@@ -65,10 +65,10 @@ resource "aws_security_group" "mq_security_group" {
   tags        = local.tags
 
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = local.allowed_cidr_blocks
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    cidr_blocks     = local.allowed_cidr_blocks
     security_groups = var.bastion_security_group_id != "" ? [var.bastion_security_group_id] : []
   }
 

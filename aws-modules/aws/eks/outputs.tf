@@ -29,7 +29,7 @@ output "worker_iam_role_arn" {
 }
 
 ########################################
-# OUTPUTS (NEW) — for your Loki module
+# OIDC OUTPUTS
 ########################################
 
 output "cluster_oidc_issuer" {
@@ -50,4 +50,18 @@ output "cluster_oidc_hostpath" {
 output "oidc_provider_arn" {
   description = "IAM OIDC provider ARN to pass into external modules (e.g., Loki trust policy)"
   value       = aws_iam_openid_connect_provider.eks.arn
+}
+
+########################################
+# EXTERNAL SECRETS OPERATOR OUTPUTS
+########################################
+
+output "external_secrets_role_arn" {
+  description = "IAM Role ARN for External Secrets Operator"
+  value       = aws_iam_role.external_secrets_irsa.arn
+}
+
+output "external_secrets_role_name" {
+  description = "IAM Role name for External Secrets Operator"
+  value       = aws_iam_role.external_secrets_irsa.name
 }

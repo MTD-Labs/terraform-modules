@@ -1,5 +1,5 @@
 ########################################
-# EKS CLUSTER (your original content)
+# EKS CLUSTER
 ########################################
 
 data "aws_caller_identity" "current" {}
@@ -133,14 +133,14 @@ resource "aws_iam_role_policy_attachment" "AmazonEKS_CNI_Policy" {
 
 
 ########################################
-# IRSA / OIDC PROVIDER (NEW)
+# IRSA / OIDC PROVIDER
 ########################################
 
 # 1) Derive issuer pieces cleanly
 locals {
-  oidc_issuer   = aws_eks_cluster.this.identity[0].oidc[0].issuer # e.g. https://oidc.eks.ap-south-1.amazonaws.com/id/1EE48D00...
-  oidc_hostpath = replace(local.oidc_issuer, "https://", "")      # e.g. oidc.eks.ap-south-1.amazonaws.com/id/1EE48D00...
-  oidc_id       = element(split("/id/", local.oidc_issuer), 1)    # e.g. 1EE48D00...
+  oidc_issuer   = aws_eks_cluster.this.identity[0].oidc[0].issuer
+  oidc_hostpath = replace(local.oidc_issuer, "https://", "")
+  oidc_id       = element(split("/id/", local.oidc_issuer), 1)
 }
 
 # 2) Pull TLS thumbprint for the OIDC provider
@@ -148,7 +148,7 @@ data "tls_certificate" "eks_oidc" {
   url = local.oidc_issuer
 }
 
-# 3) Create (or manage) the IAM OIDC provider for this cluster
+# 3) Create the IAM OIDC provider for this cluster
 resource "aws_iam_openid_connect_provider" "eks" {
   url             = local.oidc_issuer
   client_id_list  = ["sts.amazonaws.com"]
@@ -159,11 +159,9 @@ resource "aws_iam_openid_connect_provider" "eks" {
 
 
 ########################################
-# EBS CSI DRIVER (ADD-ON + IRSA ROLE) (NEW)
+# EBS CSI DRIVER (ADD-ON + IRSA ROLE)
 ########################################
 
-# IRSA role for the aws-ebs-csi-driver controller:
-# The service account used by the addon is: kube-system:ebs-csi-controller-sa
 data "aws_iam_policy_document" "ebs_csi_assume_role" {
   statement {
     effect  = "Allow"
@@ -177,7 +175,6 @@ data "aws_iam_policy_document" "ebs_csi_assume_role" {
       variable = "${local.oidc_hostpath}:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # lock it down to the SA name/namespace the addon uses:
     condition {
       test     = "StringEquals"
       variable = "${local.oidc_hostpath}:sub"
@@ -192,18 +189,14 @@ resource "aws_iam_role" "ebs_csi_irsa" {
   tags               = local.tags
 }
 
-# Managed AWS policy granting EBS CSI permissions
 resource "aws_iam_role_policy_attachment" "ebs_csi_policy" {
   role       = aws_iam_role.ebs_csi_irsa.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
-# Install the official EKS add-on and bind to the IRSA role
 resource "aws_eks_addon" "ebs_csi" {
-  cluster_name = aws_eks_cluster.this.name
-  addon_name   = "aws-ebs-csi-driver"
-  # You can pin a version if desired, e.g. "v1.30.0-eksbuild.1"
-  # addon_version             = var.ebs_csi_addon_version
+  cluster_name                = aws_eks_cluster.this.name
+  addon_name                  = "aws-ebs-csi-driver"
   service_account_role_arn    = aws_iam_role.ebs_csi_irsa.arn
   resolve_conflicts_on_update = "OVERWRITE"
   tags                        = local.tags
@@ -212,4 +205,72 @@ resource "aws_eks_addon" "ebs_csi" {
     aws_eks_node_group.default,
     aws_iam_role_policy_attachment.ebs_csi_policy
   ]
+}
+
+
+########################################
+# EXTERNAL SECRETS OPERATOR (IRSA ROLE)
+########################################
+
+# IAM policy for External Secrets Operator to access AWS Secrets Manager
+data "aws_iam_policy_document" "external_secrets_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:ListSecrets"
+    ]
+    resources = var.external_secrets_allowed_secrets != null ? var.external_secrets_allowed_secrets : ["arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath"
+    ]
+    resources = ["arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/*"]
+  }
+}
+
+resource "aws_iam_policy" "external_secrets" {
+  name        = "${var.cluster_name}-external-secrets-policy"
+  description = "Policy for External Secrets Operator to access AWS Secrets Manager"
+  policy      = data.aws_iam_policy_document.external_secrets_policy.json
+  tags        = local.tags
+}
+
+# IRSA role for External Secrets Operator
+data "aws_iam_policy_document" "external_secrets_assume_role" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks.arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_hostpath}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_hostpath}:sub"
+      values   = ["system:serviceaccount:external-secrets:external-secrets"]
+    }
+  }
+}
+
+resource "aws_iam_role" "external_secrets_irsa" {
+  name               = "${var.cluster_name}-external-secrets-irsa"
+  assume_role_policy = data.aws_iam_policy_document.external_secrets_assume_role.json
+  tags               = local.tags
+}
+
+resource "aws_iam_role_policy_attachment" "external_secrets_policy_attach" {
+  role       = aws_iam_role.external_secrets_irsa.name
+  policy_arn = aws_iam_policy.external_secrets.arn
 }

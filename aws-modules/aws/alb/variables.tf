@@ -138,3 +138,15 @@ variable "cloudflare_proxied" {
   description = "Whether to enable Cloudflare proxy (orange cloud)"
   default     = false
 }
+
+variable "create_cloudflare_record" {
+  type        = bool
+  description = "Create Cloudflare Record for Domains"
+  default     = true
+}
+
+variable "cloudflare_ttl" {
+  type        = number
+  description = "Record TTL"
+  default     = 300
+}

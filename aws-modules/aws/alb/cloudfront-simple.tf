@@ -3,20 +3,20 @@
 ########################################################################################################################
 
 resource "aws_cloudfront_distribution" "default" {
-  count           = var.cdn_enabled ? 1 : 0
-  comment         = "${title(var.name)} CloudFront Distribution"
-  enabled         = true
-  is_ipv6_enabled = true
-  aliases         = [var.cdn_domain_name]
-  http_version = "http3"  # enables HTTP/3
+  count               = var.cdn_enabled ? 1 : 0
+  comment             = "${title(var.name)} CloudFront Distribution"
+  enabled             = true
+  is_ipv6_enabled     = true
+  aliases             = [var.cdn_domain_name]
+  http_version        = "http3" # enables HTTP/3
   default_root_object = "index.html"
 
   default_cache_behavior {
     # Images don’t need write methods
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    compress         = true                      # << gzip/brotli to clients that support it
-    target_origin_id = element(var.cdn_buckets, length(var.cdn_buckets) - 1).name
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true # << gzip/brotli to clients that support it
+    target_origin_id       = element(var.cdn_buckets, length(var.cdn_buckets) - 1).name
     viewer_protocol_policy = "redirect-to-https"
 
     min_ttl     = 0
@@ -29,25 +29,25 @@ resource "aws_cloudfront_distribution" "default" {
   }
 
   dynamic "ordered_cache_behavior" {
-      for_each = var.cdn_buckets
-      iterator = bucket
-      content {
-        path_pattern           = bucket.value["path"]
-        allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-        cached_methods         = ["GET", "HEAD"]
-        compress               = true
-        target_origin_id       = bucket.value["name"]
-        viewer_protocol_policy = "redirect-to-https"
-        min_ttl                = 0
-        default_ttl            = 2592000   # 30d
-        max_ttl                = 31536000  # 1y
+    for_each = var.cdn_buckets
+    iterator = bucket
+    content {
+      path_pattern           = bucket.value["path"]
+      allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+      cached_methods         = ["GET", "HEAD"]
+      compress               = true
+      target_origin_id       = bucket.value["name"]
+      viewer_protocol_policy = "redirect-to-https"
+      min_ttl                = 0
+      default_ttl            = 2592000  # 30d
+      max_ttl                = 31536000 # 1y
 
-        forwarded_values {
-          query_string = false  # set to true only if you size via ?w=256 etc.
-          cookies { forward = "none" }
-        }
+      forwarded_values {
+        query_string = false # set to true only if you size via ?w=256 etc.
+        cookies { forward = "none" }
       }
     }
+  }
 
 
   dynamic "origin" {

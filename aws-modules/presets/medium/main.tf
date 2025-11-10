@@ -82,8 +82,10 @@ module "alb" {
 
   subject_alternative_names = var.subject_alternative_names
 
-  cloudflare_proxied = var.cloudflare_proxied
-  cloudflare_zone    = var.cloudflare_zone
+  cloudflare_proxied       = var.cloudflare_proxied
+  cloudflare_zone          = var.cloudflare_zone
+  create_cloudflare_record = var.create_cloudflare_record
+  cloudflare_ttl           = var.cloudflare_ttl
 }
 
 module "ecr" {
@@ -240,11 +242,11 @@ module "ec2" {
   ssh_authorized_keys_secret = var.bastion_ssh_authorized_keys_secret
   allowed_tcp_ports          = ["22", "80", "443"]
   allowed_udp_ports          = ["51820"]
-  grafana_enabled = var.grafana_enabled
-  grafana_domain  = var.grafana_domain
-  ecr_user_id     = var.ecr_user_id
-  instance_type   = var.bastion_instance_type
-  depends_on = [module.secrets]
+  grafana_enabled            = var.grafana_enabled
+  grafana_domain             = var.grafana_domain
+  ecr_user_id                = var.ecr_user_id
+  instance_type              = var.bastion_instance_type
+  depends_on                 = [module.secrets]
 }
 
 module "s3" {
@@ -355,7 +357,13 @@ module "eks" {
   endpoint_private        = var.eks_endpoint_private
   endpoint_public         = var.eks_endpoint_public
   enabled_logs            = var.eks_enabled_logs
+
+  # External Secrets Operator configuration
+  install_external_secrets         = var.eks_install_external_secrets
+  external_secrets_chart_version   = var.eks_external_secrets_chart_version
+  external_secrets_allowed_secrets = var.eks_external_secrets_allowed_secrets
 }
+
 
 resource "null_resource" "wait_for_cluster" {
   count = var.eks_enabled ? 1 : 0
@@ -387,7 +395,6 @@ provider "kubernetes" {
   }
 }
 
-# Провайдер Helm для EKS
 provider "helm" {
   alias = "eks"
 
@@ -407,6 +414,38 @@ provider "helm" {
       ])
     }
   }
+}
+
+# External Secrets Operator installation
+module "external_secrets" {
+  count  = var.eks_enabled && var.eks_install_external_secrets ? 1 : 0
+  source = "../../aws/external-secrets"
+
+  providers = {
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
+  }
+
+  region                         = var.region
+  install_external_secrets       = true
+  external_secrets_chart_version = var.eks_external_secrets_chart_version
+  external_secrets_role_arn      = module.eks[0].external_secrets_role_arn
+  cluster_ready_dependency       = null_resource.wait_for_cluster[0]
+
+  # SecretStore configuration
+  create_secret_store    = var.eks_create_secret_store
+  secret_store_name      = var.eks_secret_store_name
+  secret_store_namespace = var.eks_secret_store_namespace
+
+  # ClusterSecretStore configuration
+  create_cluster_secret_store = var.eks_create_cluster_secret_store
+  cluster_secret_store_name   = var.eks_cluster_secret_store_name
+
+  depends_on = [
+    null_resource.wait_for_cluster
+  ]
 }
 
 module "ingress" {
@@ -683,4 +722,30 @@ resource "aws_iam_role_policy_attachment" "ecs_task_mq_read_only" {
 
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = aws_iam_policy.mq_read_only[0].arn
+}
+
+module "eks_apps" {
+  for_each = var.eks_enabled ? toset(var.eks_apps) : []
+
+  source = "../../aws/helm-apps"
+
+  providers = {
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
+  }
+
+  env              = var.env
+  namespace        = var.eks_namespace
+  region           = var.region
+  app_name         = each.value
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  values_file_path = "${path.root}/helm-charts/apps/${each.value}"
+  eks_enabled      = var.eks_enabled
+  chart_name       = var.chart_name
+  chart_version    = var.chart_version
+  depends_on       = [module.eks, module.external_secrets]
 }

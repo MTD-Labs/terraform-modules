@@ -125,13 +125,13 @@ data "cloudflare_zone" "main" {
 
 # Create CNAME record in Cloudflare pointing main domain to ALB
 resource "cloudflare_record" "alb_domain" {
-  count   = var.ecs_enabled ? 1 : 0
+  count   = var.create_cloudflare_record ? 1 : 0
   zone_id = data.cloudflare_zone.main.id
   name    = var.domain_name
   content = aws_alb.alb[0].dns_name
   type    = "CNAME"
-  ttl     = 300
-  proxied = false
+  ttl     = var.cloudflare_ttl
+  proxied = var.cloudflare_proxied
 
   depends_on = [
     aws_alb.alb,
@@ -141,14 +141,14 @@ resource "cloudflare_record" "alb_domain" {
 
 # Create CNAME records for all subject alternative names
 resource "cloudflare_record" "alb_san_domains" {
-  for_each = var.ecs_enabled ? toset(var.subject_alternative_names) : []
+  for_each = var.create_cloudflare_record ? toset(var.subject_alternative_names) : []
 
   zone_id = data.cloudflare_zone.main.id
   name    = each.value
   content = aws_alb.alb[0].dns_name
   type    = "CNAME"
-  ttl     = 300
-  proxied = false
+  ttl     = var.cloudflare_ttl
+  proxied = var.cloudflare_proxied
 
   depends_on = [
     aws_alb.alb,
