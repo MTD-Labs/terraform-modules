@@ -528,3 +528,9 @@ variable "ami_id" {
   type    = string
   default = "ami-082c5ebcf775970ae"
 }
+
+variable "create_cloudflare_record" {
+  type        = bool
+  description = "Create Cloudflare Record for Domains"
+  default     = true
+}

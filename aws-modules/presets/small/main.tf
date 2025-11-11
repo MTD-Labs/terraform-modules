@@ -41,6 +41,7 @@ module "alb" {
   lambda_private_subnets = module.vpc.private_subnets
   lambda_security_group  = [module.ec2[0].security_group_id]
   ecs_enabled            = var.ecs_enabled
+  create_cloudflare_record = var.create_cloudflare_record
 }
 
 module "vpc" {
