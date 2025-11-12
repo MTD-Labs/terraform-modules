@@ -491,6 +491,26 @@ module "grafana" {
   eks_enabled      = var.eks_enabled
 }
 
+module "prometheus" {
+  count  = var.eks_enabled ? 1 : 0
+  source = "../../aws/monitoring/prometheus"
+
+  providers = {
+    aws.main      = aws.main
+    aws.us_east_1 = aws.us_east_1
+    kubernetes    = kubernetes.eks
+    helm          = helm.eks
+  }
+
+  env              = var.env
+  cluster_name     = module.eks[0].cluster_name
+  cluster_endpoint = module.eks[0].cluster_endpoint
+  cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
+  values_file_path = "${path.root}/helm-charts/prometheus"
+  subnets          = module.vpc.private_subnets
+  eks_enabled      = var.eks_enabled
+}
+
 module "promtail" {
   count  = var.eks_enabled ? 1 : 0
   source = "../../aws/monitoring/promtail"
