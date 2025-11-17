@@ -245,3 +245,9 @@ variable "ubuntu_ami_name_pattern_loki" {
   type        = string
   default     = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
 }
+
+variable "cloudwatch_insights_enabled" {
+  type    = bool
+  default = true
+}
+

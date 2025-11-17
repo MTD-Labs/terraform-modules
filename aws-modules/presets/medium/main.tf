@@ -141,6 +141,8 @@ module "ecs" {
 
   alb_security_group_id = module.alb.alb_aws_security_group_id
   loki_instance_arch    = var.loki_instance_arch
+
+  cloudwatch_insights_enabled = var.ecs_cloudwatch_insights_enabled
 }
 
 module "postgres" {

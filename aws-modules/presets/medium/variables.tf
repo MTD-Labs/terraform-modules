@@ -1201,3 +1201,8 @@ variable "eks_cluster_secret_store_name" {
   type        = string
   default     = "aws-secrets-manager-cluster"
 }
+
+variable "ecs_cloudwatch_insights_enabled" {
+  type    = bool
+  default = true
+}

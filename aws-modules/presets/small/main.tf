@@ -32,15 +32,15 @@ module "alb" {
   idle_timeout = var.alb_idle_timeout
 
   #cdn_bucket_names = [module.s3[1].s3_bucket_bucket_regional_domain_name]
-  cdn_enabled            = var.cdn_enabled
-  cdn_buckets            = local.public_bucket_list
-  cdn_optimize_images    = var.cdn_optimize_images
-  lambda_image_url       = var.lambda_image_url
-  lambda_region          = var.lambda_region
-  lambda_memory_size     = var.lambda_memory_size
-  lambda_private_subnets = module.vpc.private_subnets
-  lambda_security_group  = [module.ec2[0].security_group_id]
-  ecs_enabled            = var.ecs_enabled
+  cdn_enabled              = var.cdn_enabled
+  cdn_buckets              = local.public_bucket_list
+  cdn_optimize_images      = var.cdn_optimize_images
+  lambda_image_url         = var.lambda_image_url
+  lambda_region            = var.lambda_region
+  lambda_memory_size       = var.lambda_memory_size
+  lambda_private_subnets   = module.vpc.private_subnets
+  lambda_security_group    = [module.ec2[0].security_group_id]
+  ecs_enabled              = var.ecs_enabled
   create_cloudflare_record = var.create_cloudflare_record
 }
 

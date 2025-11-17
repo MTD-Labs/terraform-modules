@@ -35,6 +35,15 @@ locals {
 resource "aws_ecs_cluster" "cluster" {
   name = var.cluster_name
   tags = local.tags
+
+  dynamic "setting" {
+    for_each = var.cloudwatch_insights_enabled ? [1] : []
+    content {
+      name  = "containerInsights"
+      value = "enabled"
+    }
+  }
+
 }
 
 ### PER-TASK CLOUDWATCH LOG GROUPS (env-container_name, 14 days)
