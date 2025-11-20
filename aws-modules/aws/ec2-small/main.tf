@@ -25,7 +25,9 @@ data "aws_iam_policy_document" "secrets_read_policy_doc" {
       "secretsmanager:GetSecretValue"
     ]
     resources = [
-      "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.env}-${var.name}-env*"
+      "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.env}-${var.name}-*"
+      # Or even broader:
+      # "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:${var.env}-*"
     ]
   }
 }
@@ -131,6 +133,9 @@ resource "aws_ebs_volume" "additional_disk" {
     },
     local.tags
   )
+  lifecycle {
+    ignore_changes = [availability_zone]
+  }
 }
 
 resource "aws_volume_attachment" "bastion_additional_disk" {
