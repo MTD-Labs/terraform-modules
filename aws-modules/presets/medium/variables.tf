@@ -831,7 +831,7 @@ variable "cloudflare_ttl" {
 variable "create_cloudflare_record" {
   type        = bool
   description = "Create Cloudflare Record for Domains"
-  default     = true
+  default     = false
 }
 
 variable "alb_security_group_id" {

@@ -142,7 +142,7 @@ variable "cloudflare_proxied" {
 variable "create_cloudflare_record" {
   type        = bool
   description = "Create Cloudflare Record for Domains"
-  default     = true
+  default     = false
 }
 
 variable "cloudflare_ttl" {
