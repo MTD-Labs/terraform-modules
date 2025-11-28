@@ -31,6 +31,12 @@ resource "aws_security_group" "sg" {
     protocol    = "tcp"
     cidr_blocks = var.allowed_cidr_blocks
   }
+  ingress {
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = "0.0.0.0/0"
+  }
   # Allow all outbound traffic
   egress {
     from_port   = 0
