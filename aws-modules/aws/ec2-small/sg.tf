@@ -35,7 +35,7 @@ resource "aws_security_group" "sg" {
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
-    cidr_blocks = "0.0.0.0/0"
+    cidr_blocks = ["0.0.0.0/0"]
   }
   # Allow all outbound traffic
   egress {
