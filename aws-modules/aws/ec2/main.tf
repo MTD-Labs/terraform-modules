@@ -63,6 +63,67 @@ resource "aws_key_pair" "this" {
   public_key = tls_private_key.ssh.public_key_openssh
 }
 
+############################################
+# IAM role + instance profile for bastion
+############################################
+
+resource "aws_iam_role" "bastion" {
+  name = "${var.env}-${var.name}-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = local.tags
+}
+
+# Minimal inline policy so scripts on the instance can use AWS CLI
+resource "aws_iam_role_policy" "bastion" {
+  name = "${var.env}-${var.name}-inline"
+  role = aws_iam_role.bastion.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EC2Describe"
+        Effect = "Allow"
+        Action = [
+          "ec2:DescribeVolumes",
+          "ec2:DescribeInstances",
+          "ec2:DescribeTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ECRPull"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "bastion" {
+  name = "${var.env}-${var.name}-instance-profile"
+  role = aws_iam_role.bastion.name
+}
+
 # Create EC2 instance
 resource "aws_instance" "bastion" {
   ami               = data.aws_ami.ami.id
@@ -70,6 +131,9 @@ resource "aws_instance" "bastion" {
   instance_type     = var.instance_type
   availability_zone = "${var.region}a"
   key_name          = aws_key_pair.this.key_name
+
+  iam_instance_profile = aws_iam_instance_profile.bastion.name
+
   # Primary network interface at launch (required)
   network_interface {
     network_interface_id = var.enable_public_access ? aws_network_interface.public[0].id : aws_network_interface.private.id
@@ -86,7 +150,7 @@ resource "aws_instance" "bastion" {
   }
 
   root_block_device {
-    volume_size           = 10
+    volume_size           = 50
     delete_on_termination = true
     encrypted             = false
     volume_type           = "gp2"
