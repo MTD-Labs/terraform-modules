@@ -27,6 +27,7 @@ locals {
       envs                 = merge(container.envs)
       secrets              = merge(container.secrets)
       health_check         = container.health_check
+      container_health_check = container.container_health_check
       volumes              = container.volumes
     }
   ]

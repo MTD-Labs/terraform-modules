@@ -56,7 +56,6 @@ resource "aws_cloudwatch_log_group" "container" {
 }
 
 ### ECS TASKS
-
 resource "aws_ecs_task_definition" "container_task_definitions" {
   for_each                 = { for idx, container in var.containers : idx => container }
   family                   = each.value["name"]
@@ -128,6 +127,18 @@ resource "aws_ecs_task_definition" "container_task_definitions" {
           readOnly      = coalesce(v.read_only, false)
         }
       ] : []
+
+      # Health check configuration - CORRECTED
+      healthCheck = try(container["container_health_check"], null) != null ? {
+        command = [
+          "CMD-SHELL",
+          try(container["container_health_check"]["command"], "curl -f http://localhost:${container["port"]}${try(container["health_check"]["path"], "/")} || exit 1")
+        ]
+        interval    = try(container["container_health_check"]["interval"], 30)
+        retries     = try(container["container_health_check"]["retries"], 3)
+        timeout     = try(container["container_health_check"]["timeout"], 5)
+        startPeriod = try(container["container_health_check"]["start_period"], 60)
+      } : null
 
       # If Loki is enabled and host is known, send app logs to FireLens (Loki).
       # Otherwise, use per-task CloudWatch log group (env-container_name).
@@ -229,7 +240,7 @@ resource "aws_ecs_service" "container_service" {
   }
 
   lifecycle {
-    ignore_changes = [task_definition, desired_count]
+    ignore_changes = [desired_count]
   }
 }
 

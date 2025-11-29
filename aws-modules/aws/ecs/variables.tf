@@ -64,6 +64,13 @@ variable "containers" {
     envs                 = map(string)
     secrets              = map(string)
     health_check         = map(string)
+    container_health_check = optional(object({
+      command     = optional(string)
+      interval    = optional(number)
+      retries     = optional(number)
+      timeout     = optional(number)
+      start_period = optional(number)
+    }))
     volumes = optional(list(object({
       name           = string
       container_path = string
@@ -91,6 +98,13 @@ variable "containers" {
       health_check = {
         matcher = "200"
         path    = "/"
+      }
+      container_health_check = {
+        command     = "curl -f http://localhost:8080/ || exit 1"
+        interval    = 30
+        retries     = 3
+        timeout     = 5
+        start_period = 60
       }
       volumes = [
         {
@@ -120,6 +134,13 @@ variable "containers" {
       health_check = {
         matcher = "200"
         path    = "/"
+      }
+      container_health_check = {
+        command     = "curl -f http://localhost:8081/api/health || exit 1"
+        interval    = 30
+        retries     = 3
+        timeout     = 5
+        start_period = 90
       }
       volumes = [
         {
@@ -250,4 +271,3 @@ variable "cloudwatch_insights_enabled" {
   type    = bool
   default = true
 }
-

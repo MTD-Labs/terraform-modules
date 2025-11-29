@@ -104,6 +104,13 @@ variable "ecs_containers" {
     envs                 = map(string)
     secrets              = map(string)
     health_check         = map(string)
+    container_health_check = optional(object({
+      command     = optional(string)
+      interval    = optional(number)
+      retries     = optional(number)
+      timeout     = optional(number)
+      start_period = optional(number)
+    }))
     volumes = optional(list(object({
       name           = string
       container_path = string
@@ -132,6 +139,13 @@ variable "ecs_containers" {
         matcher = "200"
         path    = "/"
       }
+      container_health_check = {
+        command     = "curl -f http://localhost:8080/ || exit 1"
+        interval    = 30
+        retries     = 3
+        timeout     = 5
+        start_period = 60
+      }
       volumes = [
         {
           name           = "web-container-efs-storage"
@@ -154,12 +168,19 @@ variable "ecs_containers" {
       priority             = 10
       port                 = 8081
       service_domain       = "domaon.example.com"
-      envs                 = { ENV_VAR2 = "value1" }
-      secrets              = { SECRET2 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret2" }
+      envs                 = { ENV_VAR1 = "value1" }
+      secrets              = { SECRET1 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret1" }
 
       health_check = {
         matcher = "200"
         path    = "/"
+      }
+      container_health_check = {
+        command     = "curl -f http://localhost:8081/api/health || exit 1"
+        interval    = 30
+        retries     = 3
+        timeout     = 5
+        start_period = 90
       }
       volumes = [
         {
