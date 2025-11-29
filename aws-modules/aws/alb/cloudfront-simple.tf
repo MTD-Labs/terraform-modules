@@ -94,7 +94,7 @@ resource "cloudflare_record" "cloudfront_domain" {
   name    = var.cdn_domain_name
   content = aws_cloudfront_distribution.default[0].domain_name
   type    = "CNAME"
-  ttl     = 300
+  ttl     = var.cloudflare_ttl
   proxied = var.cloudflare_proxied
   lifecycle {
     ignore_changes = [content] # Or prevent replacement
