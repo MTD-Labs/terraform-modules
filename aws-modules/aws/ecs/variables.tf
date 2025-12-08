@@ -271,3 +271,9 @@ variable "cloudwatch_insights_enabled" {
   type    = bool
   default = true
 }
+
+variable "vpc_cidr_block" {
+  description = "Full VPC CIDR Block"
+  type        = string
+}
+

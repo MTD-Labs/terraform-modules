@@ -124,7 +124,7 @@ module "ecs" {
   alb_security_group      = module.alb.alb_aws_security_group_id
   alb_listener_arn        = module.alb.alb_listener_https_arn
   vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
-
+  vpc_cidr_block          = module.vpc.vpc_cidr_block
   cluster_name = var.ecs_cluster_name
   containers   = local.final_ecs_containers
 
