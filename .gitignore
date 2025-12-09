@@ -3,3 +3,5 @@ aws-modules/presets/medium/.terraform/
 
 aws-modules/aws/postgres/sns-to-telegram.zip
 aws-modules/aws/mq-broker/mq-sns-to-telegram.zip
+aws-modules/aws/redis/redis-sns-to-telegram.zip
+aws-modules/aws/docdb/docdb-sns-to-telegram.zip
