@@ -219,13 +219,17 @@ data "archive_file" "docdb_sns_to_telegram_zip" {
                       continue
                   dim_name  = d.get("name")
                   dim_value = d.get("value", "")
-                  if dim_name in ("DBInstanceIdentifier", "DBClusterIdentifier", "Broker", "BrokerId"):
+                  if dim_name in ("DBInstanceIdentifier", "DBClusterIdentifier",
+                                  "Broker", "BrokerId", "CacheClusterId",
+                                  "ReplicationGroupId"):
                       resource_id = dim_value
                       break
           elif isinstance(dims, dict):
               dim_name  = dims.get("name")
               dim_value = dims.get("value", "")
-              if dim_name in ("DBInstanceIdentifier", "DBClusterIdentifier", "Broker", "BrokerId"):
+              if dim_name in ("DBInstanceIdentifier", "DBClusterIdentifier",
+                              "Broker", "BrokerId", "CacheClusterId",
+                              "ReplicationGroupId"):
                   resource_id = dim_value
 
           # Emoji by state
@@ -237,14 +241,28 @@ data "archive_file" "docdb_sns_to_telegram_zip" {
           else:
               emoji = "⚠️"
 
-          # Threshold formatting
+          # ---------- Threshold formatting (improved) ----------
           threshold_str = ""
           if threshold != "":
               try:
                   t_val = float(threshold)
-                  threshold_str = f"{t_val:g}"
+
+                  # Memory-like metrics: show GiB + bytes
+                  if metric in ("FreeableMemory", "FreeStorageSpace",
+                                "BytesUsedForCache", "RabbitMQMemUsed"):
+                      gib = t_val / (1024 ** 3)
+                      threshold_str = f"{gib:.2f} GiB ({int(t_val):,} bytes)"
+
+                  # CPU metrics: show percentage
+                  elif metric in ("CPUUtilization", "SystemCpuUtilization"):
+                      threshold_str = f"{t_val:g}%"
+
+                  # Fallback: plain number
+                  else:
+                      threshold_str = f"{t_val:g}"
               except Exception:
                   threshold_str = str(threshold)
+          # ----------------------------------------------------
 
           # Shorten reason
           short_reason = reason.split(" (")[0] if reason else ""
@@ -277,7 +295,7 @@ data "archive_file" "docdb_sns_to_telegram_zip" {
               lines.append("")
               lines.append(f"<b>Reason:</b> {safe_reason}")
 
-          # IMPORTANT: real newlines here
+          # Real newlines
           return "\n".join(lines)
 
       def lambda_handler(event, context):
