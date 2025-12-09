@@ -193,7 +193,7 @@ variable "mq_connection_zero_alarm_periods" {
 variable "telegram_bot_token" {
   description = "The security group ID of the bastion host to allow access to RDS"
   type        = string
-  default     = "8259402077:AAGIbM_McpV7Yuc-vEtDUZeAQ2CVH0AXPq8"
+  default     = "8572385599:AAHiXQwS5GM8WqFSVrePt8LehUe1cTmxCDg"
 }
 
 variable "telegram_chat_id" {

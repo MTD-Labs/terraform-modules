@@ -629,6 +629,11 @@ module "docdb" {
   enabled_cloudwatch_logs_exports = var.docdb_enabled_cloudwatch_logs_exports
   deletion_protection             = var.docdb_deletion_protection
   auto_minor_version_upgrade      = var.docdb_auto_minor_version_upgrade
+
+  enable_docdb_alarms                 = var.enable_docdb_alarms
+  docdb_cpu_threshold                 = var.docdb_cpu_threshold
+  docdb_free_memory_threshold_bytes   = var.docdb_free_memory_threshold_bytes
+  docdb_connection_zero_alarm_periods = var.docdb_connection_zero_alarm_periods
 }
 
 # IAM policy for ECS to access DocumentDB (if ECS is enabled)

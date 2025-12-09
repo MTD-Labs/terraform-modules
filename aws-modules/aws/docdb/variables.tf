@@ -155,3 +155,41 @@ variable "auto_minor_version_upgrade" {
   type        = bool
   default     = true
 }
+
+variable "enable_docdb_alarms" {
+  description = "Enable CloudWatch -> SNS -> Telegram alerts for Amazon DocumentDB"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_cpu_threshold" {
+  description = "CPU utilization threshold for DocDB alarm (%)"
+  type        = number
+  default     = 80
+}
+
+variable "docdb_free_memory_threshold_bytes" {
+  description = "DocDB FreeableMemory low threshold in bytes"
+  type        = number
+  # Example: 2 GiB
+  default = 2147483648
+}
+
+variable "docdb_connection_zero_alarm_periods" {
+  description = "Number of 5-minute periods with 0 connections before 'uptime' alarm"
+  type        = number
+  default     = 3
+}
+
+# Reuse the same bot vars as for RDS / MQ
+variable "telegram_bot_token" {
+  type        = string
+  description = "Telegram bot token used for sending alerts"
+  default     = "7963499657:AAEb2fXVE-JMYkr-eTPz4wq96Ta0cLfdRc4"
+}
+
+variable "telegram_chat_id" {
+  type        = string
+  description = "Telegram chat ID for alerts"
+  default     = "-1003423603621"
+}

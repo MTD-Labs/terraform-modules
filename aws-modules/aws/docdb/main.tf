@@ -2,7 +2,8 @@ data "aws_caller_identity" "current" {}
 data "aws_availability_zones" "available" {}
 
 locals {
-  name = var.name == "" ? "${var.env}-docdb" : "${var.env}-docdb-${var.name}"
+  name                  = var.name == "" ? "${var.env}-docdb" : "${var.env}-docdb-${var.name}"
+  enable_docdb_alerting = var.enable_docdb_alarms
   tags = merge(
     var.tags,
     {
@@ -136,4 +137,302 @@ resource "aws_docdb_cluster_instance" "docdb_instances" {
       Name = "${local.name}-instance-${count.index + 1}"
     }
   )
+}
+
+resource "aws_sns_topic" "docdb_alarms" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  name = "${local.name}-docdb-alarms"
+  tags = local.tags
+}
+
+data "archive_file" "docdb_sns_to_telegram_zip" {
+  count       = local.enable_docdb_alerting ? 1 : 0
+  type        = "zip"
+  output_path = "${path.module}/docdb-sns-to-telegram.zip"
+
+  source {
+    content = <<-EOF
+      import json
+      import os
+      import urllib.request
+      import urllib.error
+      import html
+
+      TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+      CHAT_ID        = os.environ.get("TELEGRAM_CHAT_ID")
+
+      def send_to_telegram(text: str):
+          if not TELEGRAM_TOKEN or not CHAT_ID:
+              raise RuntimeError("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set in environment variables")
+
+          url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+          payload = {
+              "chat_id": CHAT_ID,
+              "text": text,
+              "parse_mode": "HTML",
+              "disable_web_page_preview": True,
+          }
+
+          data = json.dumps(payload).encode("utf-8")
+          req = urllib.request.Request(
+              url,
+              data=data,
+              headers={"Content-Type": "application/json"}
+          )
+
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  body = resp.read().decode("utf-8")
+                  print("Telegram response:", body)
+          except urllib.error.HTTPError as e:
+              err_body = e.read().decode("utf-8")
+              print("Telegram HTTPError:", e.code, err_body)
+              raise
+
+      def build_alarm_message(subject: str, raw_msg: str) -> str:
+          # Try parse CloudWatch alarm JSON
+          try:
+              data = json.loads(raw_msg)
+          except Exception:
+              safe_subject = html.escape(subject or "Alarm")
+              safe_msg     = html.escape(raw_msg)
+              return f"⚠️ <b>{safe_subject}</b>\\n\\n<pre>{safe_msg}</pre>"
+
+          name    = data.get("AlarmName", "N/A")
+          state   = data.get("NewStateValue", "N/A")
+          reason  = data.get("NewStateReason", "")
+          region  = data.get("Region", "")
+          trigger = data.get("Trigger", {}) or {}
+
+          metric    = trigger.get("MetricName", "")
+          threshold = trigger.get("Threshold", "")
+          dims      = trigger.get("Dimensions", {})
+
+          resource_id = ""
+
+          # Dimensions can be list[ {name, value}, ... ] or a single dict
+          if isinstance(dims, list):
+              for d in dims:
+                  if not isinstance(d, dict):
+                      continue
+                  dim_name  = d.get("name")
+                  dim_value = d.get("value", "")
+                  if dim_name in ("DBInstanceIdentifier", "DBClusterIdentifier", "Broker", "BrokerId"):
+                      resource_id = dim_value
+                      break
+          elif isinstance(dims, dict):
+              dim_name  = dims.get("name")
+              dim_value = dims.get("value", "")
+              if dim_name in ("DBInstanceIdentifier", "DBClusterIdentifier", "Broker", "BrokerId"):
+                  resource_id = dim_value
+
+          # Emoji by state
+          state_upper = str(state).upper()
+          if state_upper == "ALARM":
+              emoji = "❌"
+          elif state_upper == "OK":
+              emoji = "✅"
+          else:
+              emoji = "⚠️"
+
+          # Threshold formatting
+          threshold_str = ""
+          if threshold != "":
+              try:
+                  t_val = float(threshold)
+                  threshold_str = f"{t_val:g}"
+              except Exception:
+                  threshold_str = str(threshold)
+
+          # Shorten reason
+          short_reason = reason.split(" (")[0] if reason else ""
+
+          safe_state    = html.escape(state_upper)
+          safe_name     = html.escape(name)
+          safe_region   = html.escape(region)
+          safe_resource = html.escape(resource_id) if resource_id else ""
+          safe_metric   = html.escape(str(metric)) if metric else ""
+          safe_thresh   = html.escape(threshold_str) if threshold_str else ""
+          safe_reason   = html.escape(short_reason)
+
+          lines = []
+          lines.append(f"{emoji} <b>{safe_state}</b> CloudWatch alarm")
+          lines.append(f"<b>{safe_name}</b>")
+
+          if safe_resource:
+              lines.append(f"<b>Resource:</b> {safe_resource}")
+
+          if safe_region:
+              lines.append(f"<b>Region:</b> {safe_region}")
+
+          if safe_metric:
+              if safe_thresh:
+                  lines.append(f"<b>Metric:</b> {safe_metric} (threshold: {safe_thresh})")
+              else:
+                  lines.append(f"<b>Metric:</b> {safe_metric}")
+
+          if safe_reason:
+              lines.append("")
+              lines.append(f"<b>Reason:</b> {safe_reason}")
+
+          # IMPORTANT: real newlines here
+          return "\\n".join(lines).replace("\\\\n", "\\n")
+
+      def lambda_handler(event, context):
+          print("Incoming event:", json.dumps(event))
+
+          records = event.get("Records", [])
+          if not records:
+              send_to_telegram("Test message: no Records field in event.")
+              return {"statusCode": 200}
+
+          for record in records:
+              sns = record.get("Sns", {})
+              raw_msg = sns.get("Message", "No SNS Message")
+              subject = sns.get("Subject", "Alarm")
+
+              text = build_alarm_message(subject, raw_msg)
+              send_to_telegram(text)
+
+          return {"statusCode": 200}
+      EOF
+
+    filename = "lambda_function.py"
+  }
+}
+
+resource "aws_iam_role" "docdb_lambda_sns_to_telegram" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  name = "${local.name}-docdb-sns-to-telegram-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "docdb_lambda_basic" {
+  count      = local.enable_docdb_alerting ? 1 : 0
+  role       = aws_iam_role.docdb_lambda_sns_to_telegram[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_lambda_function" "docdb_sns_to_telegram" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  function_name = "${local.name}-docdb-alarms-to-telegram"
+  role          = aws_iam_role.docdb_lambda_sns_to_telegram[0].arn
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.12"
+
+  filename         = data.archive_file.docdb_sns_to_telegram_zip[0].output_path
+  source_code_hash = data.archive_file.docdb_sns_to_telegram_zip[0].output_base64sha256
+
+  timeout = 10
+
+  environment {
+    variables = {
+      TELEGRAM_BOT_TOKEN = var.telegram_bot_token
+      TELEGRAM_CHAT_ID   = var.telegram_chat_id
+    }
+  }
+}
+
+resource "aws_sns_topic_subscription" "docdb_alarms_lambda" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  topic_arn = aws_sns_topic.docdb_alarms[0].arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.docdb_sns_to_telegram[0].arn
+}
+
+resource "aws_lambda_permission" "docdb_sns_to_telegram" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  statement_id  = "AllowExecutionFromSNSDocDBAlarms"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.docdb_sns_to_telegram[0].function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.docdb_alarms[0].arn
+}
+
+resource "aws_cloudwatch_metric_alarm" "docdb_cpu_high" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  alarm_name        = "${local.name}-docdb-cpu-high"
+  alarm_description = "Amazon DocumentDB CPU > ${var.docdb_cpu_threshold}% for 10 minutes"
+
+  namespace           = "AWS/DocDB"
+  metric_name         = "CPUUtilization"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = 2
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = var.docdb_cpu_threshold
+
+  treat_missing_data = "missing"
+
+  dimensions = {
+    DBInstanceIdentifier = local.name
+  }
+
+  alarm_actions = [aws_sns_topic.docdb_alarms[0].arn]
+  ok_actions    = [aws_sns_topic.docdb_alarms[0].arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "docdb_free_memory_low" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  alarm_name        = "${local.name}-docdb-free-memory-low"
+  alarm_description = "Amazon DocumentDB FreeableMemory below configured threshold"
+
+  namespace           = "AWS/DocDB"
+  metric_name         = "FreeableMemory"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = 2
+  comparison_operator = "LessThanThreshold"
+  threshold           = var.docdb_free_memory_threshold_bytes
+
+  treat_missing_data = "missing"
+
+  dimensions = {
+    DBInstanceIdentifier = local.name
+  }
+
+  alarm_actions = [aws_sns_topic.docdb_alarms[0].arn]
+  ok_actions    = [aws_sns_topic.docdb_alarms[0].arn]
+}
+
+resource "aws_cloudwatch_metric_alarm" "docdb_connections_zero" {
+  count = local.enable_docdb_alerting ? 1 : 0
+
+  alarm_name        = "${local.name}-docdb-connections-zero"
+  alarm_description = "Amazon DocumentDB DatabaseConnections == 0 for a prolonged period (approximate uptime check)"
+
+  namespace           = "AWS/DocDB"
+  metric_name         = "DatabaseConnections"
+  statistic           = "Average"
+  period              = 300
+  evaluation_periods  = var.docdb_connection_zero_alarm_periods
+  comparison_operator = "LessThanThreshold"
+  threshold           = 1
+
+  treat_missing_data = "missing"
+
+  dimensions = {
+    DBInstanceIdentifier = local.name
+  }
+
+  alarm_actions = [aws_sns_topic.docdb_alarms[0].arn]
+  ok_actions    = [aws_sns_topic.docdb_alarms[0].arn]
 }

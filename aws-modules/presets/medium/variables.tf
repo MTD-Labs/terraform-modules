@@ -1301,3 +1301,29 @@ variable "rds_total_storage_gib" {
   type        = number
   default     = 10
 }
+
+variable "enable_docdb_alarms" {
+  description = "Enable CloudWatch -> SNS -> Telegram alerts for Amazon DocumentDB"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_cpu_threshold" {
+  description = "CPU utilization threshold for DocDB alarm (%)"
+  type        = number
+  default     = 80
+}
+
+variable "docdb_free_memory_threshold_bytes" {
+  description = "DocDB FreeableMemory low threshold in bytes"
+  type        = number
+  # Example: 2 GiB
+  default = 2147483648
+}
+
+variable "docdb_connection_zero_alarm_periods" {
+  description = "Number of 5-minute periods with 0 connections before 'uptime' alarm"
+  type        = number
+  default     = 3
+}
+
