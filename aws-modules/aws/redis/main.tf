@@ -2,6 +2,10 @@ data "aws_availability_zones" "available" {}
 
 locals {
   name = var.name == "" ? "${var.env}-redis" : "${var.env}-redis-${var.name}"
+  enable_redis_alerting = var.enable_redis_alarms
+  redis_bytes_used_threshold_bytes = floor(
+    var.redis_node_max_memory_bytes * var.redis_memory_usage_threshold_percent / 100
+  )
   tags = merge({
     Name       = local.name
     env        = var.env
@@ -38,11 +42,13 @@ resource "aws_ssm_parameter" "auth_token" {
 module "redis" {
   source                     = "cloudposse/elasticache-redis/aws"
   version                    = "2.0.0"
-  name                       = local.name
-  engine_version             = var.engine_version
-  family                     = var.family
-  cluster_size               = var.cluster_size
-  instance_type              = var.instance_type
+
+  name           = local.name
+  engine_version = var.engine_version
+  family         = var.family
+  cluster_size   = var.cluster_size
+  instance_type  = var.instance_type
+
   apply_immediately          = false
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
@@ -53,7 +59,6 @@ module "redis" {
   subnets                       = var.vpc_subnets
   create_security_group         = true
   associated_security_group_ids = []
-  # elasticache_subnet_group_name = var.vpc_subnet_group_name
 
   additional_security_group_rules = [
     {
@@ -68,16 +73,25 @@ module "redis" {
   cluster_mode_enabled                 = var.cluster_mode_enabled
   cluster_mode_num_node_groups         = var.cluster_mode_num_node_groups
   cluster_mode_replicas_per_node_group = var.cluster_mode_replicas_per_node_group
-  replication_group_id                 = substr(local.name, 0, min(length(local.name), 20)) # needs to be <20 characters long
+  replication_group_id                 = substr(local.name, 0, min(length(local.name), 20))
   automatic_failover_enabled           = var.automatic_failover_enabled
   snapshot_retention_limit             = var.snapshot_retention_limit
   snapshot_window                      = var.snapshot_window
-  cloudwatch_metric_alarms_enabled     = true
 
-  #workaround for auth issue
+  # 🔔 Enable built-in CloudWatch alarms
+  cloudwatch_metric_alarms_enabled = local.enable_redis_alerting
+
+  # thresholds (percent / bytes)
+  alarm_cpu_threshold_percent   = var.redis_cpu_threshold
+  alarm_memory_threshold_bytes  = local.redis_bytes_used_threshold_bytes
+
+  # send alarms → SNS → Telegram
+  alarm_actions = local.enable_redis_alerting ? [aws_sns_topic.redis_alarms[0].arn] : []
+  ok_actions    = local.enable_redis_alerting ? [aws_sns_topic.redis_alarms[0].arn] : []
+
+  # workaround for auth issue
   user_group_ids = null
 
-  #global parameter used in all instances
   parameter = [
     {
       name  = "maxmemory-policy"
@@ -86,4 +100,227 @@ module "redis" {
   ]
 
   tags = local.tags
+}
+
+resource "aws_sns_topic" "redis_alarms" {
+  count = local.enable_redis_alerting ? 1 : 0
+
+  name = "${local.name}-redis-alarms"
+  tags = local.tags
+}
+
+data "archive_file" "redis_sns_to_telegram_zip" {
+  count       = local.enable_redis_alerting ? 1 : 0
+  type        = "zip"
+  output_path = "${path.module}/redis-sns-to-telegram.zip"
+
+  source {
+    filename = "lambda_function.py"
+    content  = <<-EOF
+      import json
+      import os
+      import urllib.request
+      import urllib.error
+      import html
+
+      TELEGRAM_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+      CHAT_ID        = os.environ.get("TELEGRAM_CHAT_ID")
+
+      def send_to_telegram(text: str):
+          if not TELEGRAM_TOKEN or not CHAT_ID:
+              raise RuntimeError("TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not set in environment variables")
+
+          url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+
+          payload = {
+              "chat_id": CHAT_ID,
+              "text": text,
+              "parse_mode": "HTML",
+              "disable_web_page_preview": True,
+          }
+
+          data = json.dumps(payload).encode("utf-8")
+          req = urllib.request.Request(
+              url,
+              data=data,
+              headers={"Content-Type": "application/json"}
+          )
+
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  body = resp.read().decode("utf-8")
+                  print("Telegram response:", body)
+          except urllib.error.HTTPError as e:
+              err_body = e.read().decode("utf-8")
+              print("Telegram HTTPError:", e.code, err_body)
+              raise
+
+      def build_alarm_message(subject: str, raw_msg: str) -> str:
+          # Try parse CloudWatch alarm JSON
+          try:
+              data = json.loads(raw_msg)
+          except Exception:
+              safe_subject = html.escape(subject or "Alarm")
+              safe_msg     = html.escape(raw_msg)
+              return f"⚠️ <b>{safe_subject}</b>\n\n<pre>{safe_msg}</pre>"
+
+          name    = data.get("AlarmName", "N/A")
+          state   = data.get("NewStateValue", "N/A")
+          reason  = data.get("NewStateReason", "")
+          region  = data.get("Region", "")
+          trigger = data.get("Trigger", {}) or {}
+
+          metric    = trigger.get("MetricName", "")
+          threshold = trigger.get("Threshold", "")
+          dims      = trigger.get("Dimensions", {})
+
+          resource_id = ""
+
+          # Dimensions can be list[ {name, value}, ... ] or a single dict
+          if isinstance(dims, list):
+              for d in dims:
+                  if not isinstance(d, dict):
+                      continue
+                  dim_name  = d.get("name")
+                  dim_value = d.get("value", "")
+                  if dim_name in ("CacheClusterId", "ReplicationGroupId", "DBInstanceIdentifier", "Broker", "BrokerId"):
+                      resource_id = dim_value
+                      break
+          elif isinstance(dims, dict):
+              dim_name  = dims.get("name")
+              dim_value = dims.get("value", "")
+              if dim_name in ("CacheClusterId", "ReplicationGroupId", "DBInstanceIdentifier", "Broker", "BrokerId"):
+                  resource_id = dim_value
+
+          state_upper = str(state).upper()
+          if state_upper == "ALARM":
+              emoji = "❌"
+          elif state_upper == "OK":
+              emoji = "✅"
+          else:
+              emoji = "⚠️"
+
+          threshold_str = ""
+          if threshold != "":
+              try:
+                  t_val = float(threshold)
+                  threshold_str = f"{t_val:g}"
+              except Exception:
+                  threshold_str = str(threshold)
+
+          short_reason = reason.split(" (")[0] if reason else ""
+
+          safe_state    = html.escape(state_upper)
+          safe_name     = html.escape(name)
+          safe_region   = html.escape(region)
+          safe_resource = html.escape(resource_id) if resource_id else ""
+          safe_metric   = html.escape(str(metric)) if metric else ""
+          safe_thresh   = html.escape(threshold_str) if threshold_str else ""
+          safe_reason   = html.escape(short_reason)
+
+          lines = []
+          lines.append(f"{emoji} <b>{safe_state}</b> CloudWatch alarm")
+          lines.append(f"<b>{safe_name}</b>")
+
+          if safe_resource:
+              lines.append(f"<b>Resource:</b> {safe_resource}")
+
+          if safe_region:
+              lines.append(f"<b>Region:</b> {safe_region}")
+
+          if safe_metric:
+              if safe_thresh:
+                  lines.append(f"<b>Metric:</b> {safe_metric} (threshold: {safe_thresh})")
+              else:
+                  lines.append(f"<b>Metric:</b> {safe_metric}")
+
+          if safe_reason:
+              lines.append("")
+              lines.append(f"<b>Reason:</b> {safe_reason}")
+
+          # REAL newlines here
+          return "\n".join(lines)
+
+
+      def lambda_handler(event, context):
+          print("Incoming event:", json.dumps(event))
+
+          records = event.get("Records", [])
+          if not records:
+              send_to_telegram("Test message: no Records field in event (Redis alarms).")
+              return {"statusCode": 200}
+
+          for record in records:
+              sns = record.get("Sns", {})
+              raw_msg = sns.get("Message", "No SNS Message")
+              subject = sns.get("Subject", "Alarm")
+
+              text = build_alarm_message(subject, raw_msg)
+              send_to_telegram(text)
+
+          return {"statusCode": 200}
+      EOF
+  }
+}
+
+resource "aws_iam_role" "redis_lambda_sns_to_telegram" {
+  count = local.enable_redis_alerting ? 1 : 0
+
+  name = "${local.name}-redis-sns-to-telegram-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "redis_lambda_basic" {
+  count      = local.enable_redis_alerting ? 1 : 0
+  role       = aws_iam_role.redis_lambda_sns_to_telegram[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_lambda_function" "redis_sns_to_telegram" {
+  count = local.enable_redis_alerting ? 1 : 0
+
+  function_name = "${local.name}-redis-alarms-to-telegram"
+  role          = aws_iam_role.redis_lambda_sns_to_telegram[0].arn
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.12"
+
+  filename         = data.archive_file.redis_sns_to_telegram_zip[0].output_path
+  source_code_hash = data.archive_file.redis_sns_to_telegram_zip[0].output_base64sha256
+
+  timeout = 10
+
+  environment {
+    variables = {
+      TELEGRAM_BOT_TOKEN = var.telegram_bot_token
+      TELEGRAM_CHAT_ID   = var.telegram_chat_id
+    }
+  }
+}
+
+resource "aws_sns_topic_subscription" "redis_alarms_lambda" {
+  count = local.enable_redis_alerting ? 1 : 0
+
+  topic_arn = aws_sns_topic.redis_alarms[0].arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.redis_sns_to_telegram[0].arn
+}
+
+resource "aws_lambda_permission" "redis_sns_to_telegram" {
+  count = local.enable_redis_alerting ? 1 : 0
+
+  statement_id  = "AllowExecutionFromSNSRedisAlarms"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.redis_sns_to_telegram[0].function_name
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.redis_alarms[0].arn
 }

@@ -382,7 +382,7 @@ resource "aws_cloudwatch_metric_alarm" "docdb_cpu_high" {
   treat_missing_data = "missing"
 
   dimensions = {
-    DBInstanceIdentifier = local.name
+    DBInstanceIdentifier = "${var.env}-docdb-${var.name}-instance-1"
   }
 
   alarm_actions = [aws_sns_topic.docdb_alarms[0].arn]
@@ -406,7 +406,7 @@ resource "aws_cloudwatch_metric_alarm" "docdb_free_memory_low" {
   treat_missing_data = "missing"
 
   dimensions = {
-    DBInstanceIdentifier = local.name
+    DBInstanceIdentifier = "${var.env}-docdb-${var.name}-instance-1"
   }
 
   alarm_actions = [aws_sns_topic.docdb_alarms[0].arn]
@@ -430,7 +430,7 @@ resource "aws_cloudwatch_metric_alarm" "docdb_connections_zero" {
   treat_missing_data = "missing"
 
   dimensions = {
-    DBInstanceIdentifier = local.name
+    DBInstanceIdentifier = "${var.env}-docdb-${var.name}-instance-1"
   }
 
   alarm_actions = [aws_sns_topic.docdb_alarms[0].arn]

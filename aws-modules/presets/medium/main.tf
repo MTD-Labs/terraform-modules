@@ -228,6 +228,11 @@ module "redis" {
   allow_vpc_private_cidr_blocks        = var.redis_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks            = var.redis_extra_allowed_cidr_blocks
 
+  enable_redis_alarms = var.enable_redis_alarms
+  redis_cpu_threshold = var.redis_cpu_threshold
+  redis_node_max_memory_bytes         = var.redis_node_max_memory_bytes
+  redis_memory_usage_threshold_percent = var.redis_memory_usage_threshold_percent
+
   depends_on = [module.vpc]
 }
 

@@ -1327,3 +1327,44 @@ variable "docdb_connection_zero_alarm_periods" {
   default     = 3
 }
 
+variable "enable_redis_alarms" {
+  type        = bool
+  description = "Enable CloudWatch + Telegram alerts for Redis"
+  default     = false
+}
+
+variable "redis_cpu_threshold" {
+  type        = number
+  description = "CPUUtilization percent to trigger alarm"
+  default     = 70
+}
+
+variable "enable_redis_memory_alarm" {
+  type        = bool
+  description = "Enable BytesUsedForCache memory high alarm"
+  default     = true
+}
+
+variable "redis_node_max_memory_bytes" {
+  type        = number
+  description = "Total usable Redis memory per node (bytes) for this instance type"
+}
+
+variable "redis_memory_usage_threshold_percent" {
+  type        = number
+  description = "Alarm when BytesUsedForCache is above this percent of node_max_memory_bytes"
+  default     = 80
+}
+
+variable "enable_redis_uptime_alarm" {
+  type        = bool
+  description = "Enable CurrConnections == 0 uptime alarm"
+  default     = true
+}
+
+variable "redis_connections_zero_alarm_periods" {
+  type        = number
+  description = "How many 5-minute periods with 0 connections before alarming"
+  default     = 3 # 15 minutes
+}
+

@@ -122,3 +122,36 @@ variable "kms_ssm_key_arn" {
   description = "ARN of the AWS KMS key used for SSM encryption"
   default     = "alias/aws/ssm"
 }
+
+variable "enable_redis_alarms" {
+  type        = bool
+  default     = true
+  description = "Enable CloudWatch + Telegram alerts for Redis"
+}
+
+variable "redis_cpu_threshold" {
+  type        = number
+  default     = 70
+}
+
+variable "redis_node_max_memory_bytes" {
+  type        = number
+  description = "Total usable Redis memory per node (bytes)"
+}
+
+variable "redis_memory_usage_threshold_percent" {
+  type        = number
+  default     = 80
+}
+
+variable "telegram_bot_token" {
+  type        = string
+  description = "Telegram bot token used for sending Redis alarms"
+  default = "8517142733:AAHH1XVe70JlPWRaIOl_BVF4hBv_7YpfYR8"
+}
+
+variable "telegram_chat_id" {
+  description = "The security group ID of the bastion host to allow access to RDS"
+  type        = string
+  default     = "-1003423603621"
+}
