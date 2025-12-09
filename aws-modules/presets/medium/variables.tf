@@ -105,10 +105,10 @@ variable "ecs_containers" {
     secrets              = map(string)
     health_check         = map(string)
     container_health_check = optional(object({
-      command     = optional(string)
-      interval    = optional(number)
-      retries     = optional(number)
-      timeout     = optional(number)
+      command      = optional(string)
+      interval     = optional(number)
+      retries      = optional(number)
+      timeout      = optional(number)
       start_period = optional(number)
     }))
     volumes = optional(list(object({
@@ -140,10 +140,10 @@ variable "ecs_containers" {
         path    = "/"
       }
       container_health_check = {
-        command     = "curl -f http://localhost:8080/ || exit 1"
-        interval    = 30
-        retries     = 3
-        timeout     = 5
+        command      = "curl -f http://localhost:8080/ || exit 1"
+        interval     = 30
+        retries      = 3
+        timeout      = 5
         start_period = 60
       }
       volumes = [
@@ -176,10 +176,10 @@ variable "ecs_containers" {
         path    = "/"
       }
       container_health_check = {
-        command     = "curl -f http://localhost:8081/api/health || exit 1"
-        interval    = 30
-        retries     = 3
-        timeout     = 5
+        command      = "curl -f http://localhost:8081/api/health || exit 1"
+        interval     = 30
+        retries      = 3
+        timeout      = 5
         start_period = 90
       }
       volumes = [
@@ -1226,4 +1226,78 @@ variable "eks_cluster_secret_store_name" {
 variable "ecs_cloudwatch_insights_enabled" {
   type    = bool
   default = true
+}
+
+variable "enable_rds_alarms" {
+  description = "Enable CloudWatch + SNS + Lambda alerts for RDS"
+  type        = bool
+  default     = false
+}
+
+variable "rds_cpu_threshold" {
+  description = "CPUUtilization alarm threshold (%)"
+  type        = number
+  default     = 80
+}
+
+variable "rds_free_memory_threshold_bytes" {
+  description = "FreeableMemory alarm threshold in bytes"
+  type        = number
+  default     = 2147483648
+}
+
+variable "rds_event_categories" {
+  description = "RDS event categories to subscribe to"
+  type        = list(string)
+  default = [
+    "availability",
+    "deletion",
+    "failover",
+    "failure",
+    "maintenance",
+    "recovery",
+    "restoration"
+  ]
+}
+
+variable "enable_mq_disk_alarm" {
+  description = "Enable Amazon MQ disk free space alarm"
+  type        = bool
+  default     = true
+}
+
+variable "mq_disk_total_gib" {
+  description = "Total disk size allocated to the MQ broker in GiB (used for free-space threshold calculation)"
+  type        = number
+  default     = 100
+}
+
+variable "mq_disk_usage_threshold_percent" {
+  description = "Disk usage percent at which alarm should fire. Example: 80 -> alarm when free < 20%."
+  type        = number
+  default     = 80
+}
+
+variable "enable_mq_alarms" {
+  description = "Enable CloudWatch -> SNS -> Telegram alerts for Amazon MQ"
+  type        = bool
+  default     = false
+}
+
+variable "enable_rds_storage_alarm" {
+  description = "Enable RDS storage (disk usage) alarm"
+  type        = bool
+  default     = true
+}
+
+variable "rds_storage_usage_threshold_percent" {
+  description = "Usage percentage at which to alarm for RDS disk (e.g. 80 => alarm when used >= 80%, i.e. free <= 20%)"
+  type        = number
+  default     = 80
+}
+
+variable "rds_total_storage_gib" {
+  description = "Storage amount for DB"
+  type        = number
+  default     = 10
 }

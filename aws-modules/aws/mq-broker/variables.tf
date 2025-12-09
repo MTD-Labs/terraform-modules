@@ -157,3 +157,65 @@ variable "additional_security_group_ids" {
   type        = list(string)
   default     = []
 }
+
+variable "enable_mq_alarms" {
+  description = "Enable CloudWatch -> SNS -> Telegram alerts for Amazon MQ"
+  type        = bool
+  default     = false
+}
+
+variable "mq_cpu_threshold" {
+  description = "CPU utilization threshold for MQ alarm (%)"
+  type        = number
+  default     = 80
+}
+
+variable "mq_mem_used_threshold_bytes" {
+  description = "RabbitMQMemUsed threshold in bytes"
+  type        = number
+  # ~2 GiB example
+  default = 2147483648
+}
+
+variable "mq_disk_free_threshold_bytes" {
+  description = "RabbitMQDiskFree low threshold in bytes"
+  type        = number
+  # ~10 GiB free
+  default = 10737418240
+}
+
+variable "mq_connection_zero_alarm_periods" {
+  description = "Number of 5-min periods with 0 connections before alarm"
+  type        = number
+  default     = 3
+}
+
+variable "telegram_bot_token" {
+  description = "The security group ID of the bastion host to allow access to RDS"
+  type        = string
+  default     = "8259402077:AAGIbM_McpV7Yuc-vEtDUZeAQ2CVH0AXPq8"
+}
+
+variable "telegram_chat_id" {
+  description = "The security group ID of the bastion host to allow access to RDS"
+  type        = string
+  default     = "-1003423603621"
+}
+
+variable "enable_mq_disk_alarm" {
+  description = "Enable Amazon MQ disk free space alarm"
+  type        = bool
+  default     = true
+}
+
+variable "mq_disk_total_gib" {
+  description = "Total disk size allocated to the MQ broker in GiB (used for free-space threshold calculation)"
+  type        = number
+  default     = 100
+}
+
+variable "mq_disk_usage_threshold_percent" {
+  description = "Disk usage percent at which alarm should fire. Example: 80 -> alarm when free < 20%."
+  type        = number
+  default     = 80
+}

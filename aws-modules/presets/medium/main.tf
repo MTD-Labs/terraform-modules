@@ -11,24 +11,24 @@ locals {
   # ---------- Final ECS containers (single source of truth) ----------
   final_ecs_containers = [
     for container in var.ecs_containers : {
-      name                 = container.name
-      image                = container.image
-      command              = container.command
-      cpu                  = container.cpu
-      memory               = container.memory
-      min_count            = container.min_count
-      max_count            = container.max_count
-      target_cpu_threshold = container.target_cpu_threshold
-      target_mem_threshold = container.target_mem_threshold
-      path                 = container.path
-      priority             = container.priority
-      port                 = container.port
-      service_domain       = container.service_domain
-      envs                 = merge(container.envs)
-      secrets              = merge(container.secrets)
-      health_check         = container.health_check
+      name                   = container.name
+      image                  = container.image
+      command                = container.command
+      cpu                    = container.cpu
+      memory                 = container.memory
+      min_count              = container.min_count
+      max_count              = container.max_count
+      target_cpu_threshold   = container.target_cpu_threshold
+      target_mem_threshold   = container.target_mem_threshold
+      path                   = container.path
+      priority               = container.priority
+      port                   = container.port
+      service_domain         = container.service_domain
+      envs                   = merge(container.envs)
+      secrets                = merge(container.secrets)
+      health_check           = container.health_check
       container_health_check = container.container_health_check
-      volumes              = container.volumes
+      volumes                = container.volumes
     }
   ]
 }
@@ -125,8 +125,8 @@ module "ecs" {
   alb_listener_arn        = module.alb.alb_listener_https_arn
   vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
   vpc_cidr_block          = module.vpc.vpc_cidr_block
-  cluster_name = var.ecs_cluster_name
-  containers   = local.final_ecs_containers
+  cluster_name            = var.ecs_cluster_name
+  containers              = local.final_ecs_containers
 
   loki_enabled           = var.loki_enabled
   grafana_domain         = var.grafana_domain
@@ -178,6 +178,14 @@ module "postgres" {
   master_username               = var.postgres_master_username
   database_name                 = var.postgres_database_name
   database_user_map             = var.postgres_database_user_map
+
+  enable_rds_alarms               = var.enable_rds_alarms
+  rds_cpu_threshold               = var.rds_cpu_threshold
+  rds_free_memory_threshold_bytes = var.rds_free_memory_threshold_bytes
+  rds_event_categories            = var.rds_event_categories
+
+  enable_rds_storage_alarm            = var.enable_rds_storage_alarm
+  rds_storage_usage_threshold_percent = var.rds_storage_usage_threshold_percent
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_postgres_policy" {
@@ -705,6 +713,11 @@ module "mq" {
   allow_vpc_cidr_block          = var.mq_allow_vpc_cidr_block
   allow_vpc_private_cidr_blocks = var.mq_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks     = var.mq_extra_allowed_cidr_blocks
+
+  enable_mq_alarms                = var.enable_mq_alarms
+  enable_mq_disk_alarm            = var.enable_mq_disk_alarm
+  mq_disk_total_gib               = var.mq_disk_total_gib
+  mq_disk_usage_threshold_percent = var.mq_disk_usage_threshold_percent
 }
 
 # IAM policy for ECS to access MQ (if ECS is enabled)

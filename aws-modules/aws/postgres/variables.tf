@@ -152,3 +152,59 @@ variable "bastion_security_group_id" {
   description = "The security group ID of the bastion host to allow access to RDS"
   type        = string
 }
+
+variable "enable_rds_alarms" {
+  description = "Enable CloudWatch + SNS + Lambda alerts for RDS"
+  type        = bool
+  default     = false
+}
+
+variable "rds_cpu_threshold" {
+  description = "CPUUtilization alarm threshold (%)"
+  type        = number
+  default     = 80
+}
+
+variable "rds_free_memory_threshold_bytes" {
+  description = "FreeableMemory alarm threshold in bytes"
+  type        = number
+  default     = 2147483648
+}
+
+variable "rds_event_categories" {
+  description = "RDS event categories to subscribe to"
+  type        = list(string)
+  default = [
+    "availability",
+    "deletion",
+    "failover",
+    "failure",
+    "maintenance",
+    "recovery",
+    "restoration"
+  ]
+}
+
+variable "telegram_bot_token" {
+  description = "The security group ID of the bastion host to allow access to RDS"
+  type        = string
+  default     = "8259402077:AAGIbM_McpV7Yuc-vEtDUZeAQ2CVH0AXPq8"
+}
+
+variable "telegram_chat_id" {
+  description = "The security group ID of the bastion host to allow access to RDS"
+  type        = string
+  default     = "-1003423603621"
+}
+
+variable "enable_rds_storage_alarm" {
+  description = "Enable RDS storage (disk usage) alarm"
+  type        = bool
+  default     = true
+}
+
+variable "rds_storage_usage_threshold_percent" {
+  description = "Usage percentage at which to alarm for RDS disk (e.g. 80 => alarm when used >= 80%, i.e. free <= 20%)"
+  type        = number
+  default     = 80
+}
