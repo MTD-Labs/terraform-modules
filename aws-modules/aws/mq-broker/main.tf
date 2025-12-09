@@ -208,7 +208,7 @@ data "archive_file" "mq_sns_to_telegram_zip" {
           except Exception:
               safe_subject = html.escape(subject or "Alarm")
               safe_msg     = html.escape(raw_msg)
-              return f"⚠️ <b>{safe_subject}</b>\\n\\n<pre>{safe_msg}</pre>"
+              return f"⚠️ <b>{safe_subject}</b>\n\n<pre>{safe_msg}</pre>"
 
           name    = data.get("AlarmName", "N/A")
           state   = data.get("NewStateValue", "N/A")

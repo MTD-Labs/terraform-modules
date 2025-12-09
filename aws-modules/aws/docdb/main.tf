@@ -198,7 +198,7 @@ data "archive_file" "docdb_sns_to_telegram_zip" {
           except Exception:
               safe_subject = html.escape(subject or "Alarm")
               safe_msg     = html.escape(raw_msg)
-              return f"⚠️ <b>{safe_subject}</b>\\n\\n<pre>{safe_msg}</pre>"
+              return f"⚠️ <b>{safe_subject}</b>\n\n<pre>{safe_msg}</pre>"
 
           name    = data.get("AlarmName", "N/A")
           state   = data.get("NewStateValue", "N/A")
@@ -278,7 +278,7 @@ data "archive_file" "docdb_sns_to_telegram_zip" {
               lines.append(f"<b>Reason:</b> {safe_reason}")
 
           # IMPORTANT: real newlines here
-          return "\\n".join(lines).replace("\\\\n", "\\n")
+          return "\n".join(lines)
 
       def lambda_handler(event, context):
           print("Incoming event:", json.dumps(event))
