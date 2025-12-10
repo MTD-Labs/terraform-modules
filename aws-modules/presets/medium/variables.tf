@@ -1368,3 +1368,19 @@ variable "redis_connections_zero_alarm_periods" {
   default     = 3 # 15 minutes
 }
 
+variable "subscription_filter_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "subscription_filter_pattern" {
+  type    = string
+  # Match ERROR/WARN loosely – tune if needed
+  default = "?ERROR ?Error ?error ?WARN ?Warn ?warn"
+}
+
+variable "subscription_filter_slack_webhook_url" {
+  type      = string
+  sensitive = true
+  default   = ""
+}

@@ -144,6 +144,10 @@ module "ecs" {
   loki_instance_arch    = var.loki_instance_arch
 
   cloudwatch_insights_enabled = var.ecs_cloudwatch_insights_enabled
+
+  subscription_filter_enabled          = var.subscription_filter_enabled
+  subscription_filter_slack_webhook_url = var.subscription_filter_slack_webhook_url
+  subscription_filter_pattern = var.subscription_filter_pattern
 }
 
 module "postgres" {

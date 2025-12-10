@@ -503,3 +503,163 @@ resource "aws_iam_user_policy" "exec_user_policy" {
 }
 EOF
 }
+
+data "archive_file" "logs_to_slack_zip" {
+  count       = var.subscription_filter_enabled ? 1 : 0
+  type        = "zip"
+  output_path = "${path.module}/logs-to-slack.zip"
+
+  source {
+    filename = "lambda_function.py"
+    content  = <<-EOF
+      import os
+      import json
+      import base64
+      import gzip
+      import re
+      import urllib.request
+
+      SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
+      ENV               = os.environ.get("ENV", "prod")
+
+      # Strip ANSI color codes like \x1b[33m ... \x1b[39m
+      ANSI_RE = re.compile(r"\\x1b\\[[0-9;]*m")
+
+      def send_to_slack(text: str):
+          data = json.dumps({"text": text}).encode("utf-8")
+          req = urllib.request.Request(
+              SLACK_WEBHOOK_URL,
+              data=data,
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          with urllib.request.urlopen(req) as resp:
+              resp.read()
+
+      def lambda_handler(event, context):
+          compressed = base64.b64decode(event["awslogs"]["data"])
+          payload = json.loads(gzip.decompress(compressed))
+
+          log_group = payload.get("logGroup", "unknown")
+
+          for le in payload.get("logEvents", []):
+              message = (le.get("message") or "").strip()
+              if not message:
+                  continue
+
+              lower = message.lower()
+              if "error" not in lower and "warn" not in lower:
+                  continue
+
+              # Strip ANSI color codes
+              clean_message = ANSI_RE.sub("", message)
+
+              # Strip "297484203613:" prefix if present
+              ecs_service = log_group.split(":", 1)[-1]
+
+              text = (
+                  "*Trendex Production Error Alert — FIRING*\n\n"
+                  f"*Ecs-Container:* `prod-trendex`\n"
+                  f"*ECS-Service:* `{ecs_service}`\n"
+                  f"*Environment:* `{ENV}`\n"
+                  f"*Message:*\n```{clean_message[:3900]}```"
+              )
+
+              send_to_slack(text)
+
+          return {"statusCode": 200}
+      EOF
+  }
+}
+
+resource "aws_iam_role" "logs_to_slack_role" {
+  count = var.subscription_filter_enabled ? 1 : 0
+  name  = "${var.cluster_name}-logs-to-slack-role"
+
+  assume_role_policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "lambda.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_policy" "logs_to_slack_policy" {
+  count       = var.subscription_filter_enabled ? 1 : 0
+  name        = "${var.cluster_name}-logs-to-slack-policy"
+  description = "Allow Lambda to write logs to CloudWatch"
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        "Resource": "arn:aws:logs:${var.region}:${local.account_id}:log-group:/aws/lambda/${var.cluster_name}-logs-to-slack:*"
+      }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_role_policy_attachment" "logs_to_slack_attach" {
+  count      = var.subscription_filter_enabled ? 1 : 0
+  role       = aws_iam_role.logs_to_slack_role[0].name
+  policy_arn = aws_iam_policy.logs_to_slack_policy[0].arn
+}
+
+resource "aws_lambda_function" "logs_to_slack" {
+  count = var.subscription_filter_enabled ? 1 : 0
+
+  function_name = "${var.cluster_name}-logs-to-slack"
+  filename      = data.archive_file.logs_to_slack_zip[0].output_path
+  source_code_hash = data.archive_file.logs_to_slack_zip[0].output_base64sha256
+
+  role    = aws_iam_role.logs_to_slack_role[0].arn
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.12"
+  timeout = 10
+
+  environment {
+    variables = {
+      SLACK_WEBHOOK_URL = var.subscription_filter_slack_webhook_url
+      ENV               = var.env
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lambda_permission" "allow_cw_logs" {
+  count = var.subscription_filter_enabled ? 1 : 0
+
+  statement_id  = "AllowExecutionFromCloudWatchLogs"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.logs_to_slack[0].function_name
+  principal     = "logs.${var.region}.amazonaws.com"
+  # Optionally restrict SourceArn if you want
+}
+
+resource "aws_cloudwatch_log_subscription_filter" "ecs_errors_to_slack" {
+  for_each = var.subscription_filter_enabled ? aws_cloudwatch_log_group.container : {}
+
+  name            = "${each.value.name}-errors-to-slack"
+  log_group_name  = each.value.name
+  filter_pattern  = var.subscription_filter_pattern
+  destination_arn = aws_lambda_function.logs_to_slack[0].arn
+
+  depends_on = [aws_lambda_permission.allow_cw_logs]
+}
