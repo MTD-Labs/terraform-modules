@@ -1,7 +1,7 @@
 data "aws_availability_zones" "available" {}
 
 locals {
-  name = var.name == "" ? "${var.env}-redis" : "${var.env}-redis-${var.name}"
+  name                  = var.name == "" ? "${var.env}-redis" : "${var.env}-redis-${var.name}"
   enable_redis_alerting = var.enable_redis_alarms
   redis_bytes_used_threshold_bytes = floor(
     var.redis_node_max_memory_bytes * var.redis_memory_usage_threshold_percent / 100
@@ -40,8 +40,8 @@ resource "aws_ssm_parameter" "auth_token" {
 }
 
 module "redis" {
-  source                     = "cloudposse/elasticache-redis/aws"
-  version                    = "2.0.0"
+  source  = "cloudposse/elasticache-redis/aws"
+  version = "2.0.0"
 
   name           = local.name
   engine_version = var.engine_version
@@ -82,8 +82,8 @@ module "redis" {
   cloudwatch_metric_alarms_enabled = local.enable_redis_alerting
 
   # thresholds (percent / bytes)
-  alarm_cpu_threshold_percent   = var.redis_cpu_threshold
-  alarm_memory_threshold_bytes  = local.redis_bytes_used_threshold_bytes
+  alarm_cpu_threshold_percent  = var.redis_cpu_threshold
+  alarm_memory_threshold_bytes = local.redis_bytes_used_threshold_bytes
 
   # send alarms → SNS → Telegram
   alarm_actions = local.enable_redis_alerting ? [aws_sns_topic.redis_alarms[0].arn] : []

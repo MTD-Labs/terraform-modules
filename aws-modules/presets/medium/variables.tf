@@ -1374,7 +1374,7 @@ variable "subscription_filter_enabled" {
 }
 
 variable "subscription_filter_pattern" {
-  type    = string
+  type = string
   # Match ERROR/WARN loosely – tune if needed
   default = "?ERROR ?Error ?error ?WARN ?Warn ?warn"
 }
@@ -1383,4 +1383,21 @@ variable "subscription_filter_slack_webhook_url" {
   type      = string
   sensitive = true
   default   = ""
+}
+
+variable "ecs_scale_alarm_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "ecs_scale_alarm_slack_webhook_url" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "ecs_scale_alarm_ok_notifications" {
+  description = "Whether to send notifications when the alarm returns to OK"
+  type        = bool
+  default     = true
 }

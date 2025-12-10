@@ -145,9 +145,14 @@ module "ecs" {
 
   cloudwatch_insights_enabled = var.ecs_cloudwatch_insights_enabled
 
-  subscription_filter_enabled          = var.subscription_filter_enabled
+  subscription_filter_enabled           = var.subscription_filter_enabled
   subscription_filter_slack_webhook_url = var.subscription_filter_slack_webhook_url
-  subscription_filter_pattern = var.subscription_filter_pattern
+  subscription_filter_pattern           = var.subscription_filter_pattern
+
+  ecs_scale_alarm_enabled           = var.ecs_scale_alarm_enabled
+  ecs_scale_alarm_slack_webhook_url = var.ecs_scale_alarm_slack_webhook_url
+  ecs_scale_alarm_ok_notifications  = var.ecs_scale_alarm_ok_notifications
+
 }
 
 module "postgres" {
@@ -232,9 +237,9 @@ module "redis" {
   allow_vpc_private_cidr_blocks        = var.redis_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks            = var.redis_extra_allowed_cidr_blocks
 
-  enable_redis_alarms = var.enable_redis_alarms
-  redis_cpu_threshold = var.redis_cpu_threshold
-  redis_node_max_memory_bytes         = var.redis_node_max_memory_bytes
+  enable_redis_alarms                  = var.enable_redis_alarms
+  redis_cpu_threshold                  = var.redis_cpu_threshold
+  redis_node_max_memory_bytes          = var.redis_node_max_memory_bytes
   redis_memory_usage_threshold_percent = var.redis_memory_usage_threshold_percent
 
   depends_on = [module.vpc]

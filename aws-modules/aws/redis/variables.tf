@@ -130,8 +130,8 @@ variable "enable_redis_alarms" {
 }
 
 variable "redis_cpu_threshold" {
-  type        = number
-  default     = 70
+  type    = number
+  default = 70
 }
 
 variable "redis_node_max_memory_bytes" {
@@ -140,14 +140,14 @@ variable "redis_node_max_memory_bytes" {
 }
 
 variable "redis_memory_usage_threshold_percent" {
-  type        = number
-  default     = 80
+  type    = number
+  default = 80
 }
 
 variable "telegram_bot_token" {
   type        = string
   description = "Telegram bot token used for sending Redis alarms"
-  default = "8517142733:AAHH1XVe70JlPWRaIOl_BVF4hBv_7YpfYR8"
+  default     = "8517142733:AAHH1XVe70JlPWRaIOl_BVF4hBv_7YpfYR8"
 }
 
 variable "telegram_chat_id" {

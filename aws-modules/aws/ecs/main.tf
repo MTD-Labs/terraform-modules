@@ -27,7 +27,8 @@ locals {
   }, local.common_tags, var.tags)
 
   # Use the data source to get Loki IP
-  loki_host = var.loki_enabled && length(data.aws_instances.loki.private_ips) > 0 ? data.aws_instances.loki.private_ips[0] : ""
+  loki_host                        = var.loki_enabled && length(data.aws_instances.loki.private_ips) > 0 ? data.aws_instances.loki.private_ips[0] : ""
+  ecs_scale_alarm_ok_notifications = var.ecs_scale_alarm_ok_notifications
 }
 
 ### ECS CLUSTER
@@ -624,8 +625,8 @@ resource "aws_iam_role_policy_attachment" "logs_to_slack_attach" {
 resource "aws_lambda_function" "logs_to_slack" {
   count = var.subscription_filter_enabled ? 1 : 0
 
-  function_name = "${var.cluster_name}-logs-to-slack"
-  filename      = data.archive_file.logs_to_slack_zip[0].output_path
+  function_name    = "${var.cluster_name}-logs-to-slack"
+  filename         = data.archive_file.logs_to_slack_zip[0].output_path
   source_code_hash = data.archive_file.logs_to_slack_zip[0].output_base64sha256
 
   role    = aws_iam_role.logs_to_slack_role[0].arn
@@ -662,4 +663,213 @@ resource "aws_cloudwatch_log_subscription_filter" "ecs_errors_to_slack" {
   destination_arn = aws_lambda_function.logs_to_slack[0].arn
 
   depends_on = [aws_lambda_permission.allow_cw_logs]
+}
+
+resource "aws_sns_topic" "ecs_scale_alarms" {
+  count = var.ecs_scale_alarm_enabled ? 1 : 0
+
+  name = "${var.env}-${var.name}-ecs-scale-alarms"
+  tags = local.common_tags
+}
+
+data "archive_file" "ecs_scale_to_slack_zip" {
+  count       = var.ecs_scale_alarm_enabled ? 1 : 0
+  type        = "zip"
+  output_path = "${path.module}/ecs-scale-to-slack.zip"
+
+  source {
+    filename = "lambda_function.py"
+    content  = <<-EOF
+      import json
+      import urllib.request
+      import re
+      import os
+
+      SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
+
+      def extract_current_value(reason: str) -> str:
+          """
+          Try to extract the current metric value from NewStateReason.
+          Example: "Threshold Crossed: 1 out of the last 1 datapoints [2.0 (17/11/25 11:58:00)] ..."
+          We'll grab the 2.0
+          """
+          if not reason:
+              return "unknown"
+
+          m = re.search(r"\\[([\\d\\.]+) \\(", reason)
+          if m:
+              return m.group(1)
+          return "unknown"
+
+      def lambda_handler(event, context):
+          print("Raw event:", json.dumps(event))
+
+          record = event["Records"][0]
+          sns_message = record["Sns"]["Message"]
+
+          try:
+              data = json.loads(sns_message)
+          except json.JSONDecodeError:
+              payload = {
+                  "text": f"🚨 ECS Containers Count Alert (raw message):\\n```{sns_message}```"
+              }
+          else:
+              alarm_name = data.get("AlarmName", "unknown")
+              region = data.get("Region", "unknown")
+              new_state = data.get("NewStateValue", "unknown")
+              reason = data.get("NewStateReason", "")
+
+              trigger = data.get("Trigger", {})
+              metric_name = trigger.get("MetricName", "unknown")
+
+              dims = {
+                  d.get("name"): d.get("value")
+                  for d in trigger.get("Dimensions", [])
+              }
+              service_name = dims.get("ServiceName", "unknown")
+              cluster_name = dims.get("ClusterName", "unknown")
+
+              current_value = extract_current_value(reason)
+
+              text = (
+                  "🚨 *ECS Scaling Alert*\\n"
+                  f"*Alarm:* `{alarm_name}`\\n"
+                  f"*Region:* `{region}`\\n"
+                  f"*Cluster:* `{cluster_name}`\\n"
+                  f"*Service:* `{service_name}`\\n"
+                  f"*Metric:* `{metric_name}`\\n"
+                  f"*Current value:* *{current_value}*\\n"
+                  f"*State:* `{new_state}`\\n"
+                  f"*Reason:* {reason}"
+              )
+
+              payload = {"text": text}
+
+          req = urllib.request.Request(
+              SLACK_WEBHOOK_URL,
+              data=json.dumps(payload).encode("utf-8"),
+              headers={"Content-Type": "application/json"}
+          )
+
+          urllib.request.urlopen(req)
+
+          return {"status": "OK"}
+      EOF
+  }
+}
+
+resource "aws_iam_role" "ecs_scale_to_slack_role" {
+  count = var.ecs_scale_alarm_enabled ? 1 : 0
+  name  = "${var.cluster_name}-ecs-scale-to-slack-role"
+
+  assume_role_policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "lambda.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_policy" "ecs_scale_to_slack_policy" {
+  count       = var.ecs_scale_alarm_enabled ? 1 : 0
+  name        = "${var.cluster_name}-ecs-scale-to-slack-policy"
+  description = "Allow Lambda to write logs to CloudWatch"
+
+  policy = <<-EOF
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        "Resource": "arn:aws:logs:${var.region}:${local.account_id}:log-group:/aws/lambda/${var.cluster_name}-ecs-scale-to-slack:*"
+      }
+    ]
+  }
+  EOF
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_scale_to_slack_attach" {
+  count      = var.ecs_scale_alarm_enabled ? 1 : 0
+  role       = aws_iam_role.ecs_scale_to_slack_role[0].name
+  policy_arn = aws_iam_policy.ecs_scale_to_slack_policy[0].arn
+}
+
+resource "aws_lambda_function" "ecs_scale_to_slack" {
+  count = var.ecs_scale_alarm_enabled ? 1 : 0
+
+  function_name    = "${var.cluster_name}-ecs-scale-to-slack"
+  filename         = data.archive_file.ecs_scale_to_slack_zip[0].output_path
+  source_code_hash = data.archive_file.ecs_scale_to_slack_zip[0].output_base64sha256
+
+  role    = aws_iam_role.ecs_scale_to_slack_role[0].arn
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.12"
+  timeout = 10
+
+  environment {
+    variables = {
+      SLACK_WEBHOOK_URL = var.ecs_scale_alarm_slack_webhook_url
+      ENV               = var.env
+    }
+  }
+
+  tags = local.common_tags
+}
+
+resource "aws_lambda_permission" "ecs_scale_allow_sns" {
+  count = var.ecs_scale_alarm_enabled ? 1 : 0
+
+  statement_id  = "AllowExecutionFromSNSForEcsScale"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ecs_scale_to_slack[0].arn
+  principal     = "sns.amazonaws.com"
+  source_arn    = aws_sns_topic.ecs_scale_alarms[0].arn
+}
+
+resource "aws_sns_topic_subscription" "ecs_scale_lambda_subscription" {
+  count = var.ecs_scale_alarm_enabled ? 1 : 0
+
+  topic_arn = aws_sns_topic.ecs_scale_alarms[0].arn
+  protocol  = "lambda"
+  endpoint  = aws_lambda_function.ecs_scale_to_slack[0].arn
+
+  depends_on = [aws_lambda_permission.ecs_scale_allow_sns]
+}
+
+resource "aws_cloudwatch_metric_alarm" "ecs_task_count" {
+  for_each = var.ecs_scale_alarm_enabled ? { for idx, c in var.containers : idx => c } : {}
+
+  alarm_name          = "${var.env}-${each.value.name}-ecs-count"
+  alarm_description   = "ECS service ${each.value.name} in ${var.env} scaled above its baseline task count."
+  namespace           = "ECS/ContainerInsights"
+  metric_name         = "RunningTaskCount"
+  statistic           = "Average"
+  period              = 60 # 1 minute
+  evaluation_periods  = 3
+  datapoints_to_alarm = 3
+  comparison_operator = "GreaterThanThreshold"
+  threshold           = each.value["min_count"] # baseline count
+  treat_missing_data  = "missing"
+
+  dimensions = {
+    ClusterName = var.cluster_name
+    ServiceName = each.value.name
+  }
+
+  alarm_actions = [aws_sns_topic.ecs_scale_alarms[0].arn]
+
+  ok_actions = var.ecs_scale_alarm_ok_notifications ? [aws_sns_topic.ecs_scale_alarms[0].arn] : []
 }
