@@ -852,12 +852,12 @@ resource "aws_sns_topic_subscription" "ecs_scale_lambda_subscription" {
 resource "aws_cloudwatch_metric_alarm" "ecs_task_count" {
   for_each = var.ecs_scale_alarm_enabled ? { for idx, c in var.containers : idx => c } : {}
 
-  alarm_name          = "${var.env}-${each.value.name}-ecs-count"
+  alarm_name          = "${each.value.name}-ecs-count"
   alarm_description   = "ECS service ${each.value.name} in ${var.env} scaled above its baseline task count."
   namespace           = "ECS/ContainerInsights"
   metric_name         = "RunningTaskCount"
   statistic           = "Average"
-  period              = 60 # 1 minute
+  period              = 120 # 1 minute
   evaluation_periods  = 3
   datapoints_to_alarm = 3
   comparison_operator = "GreaterThanThreshold"
