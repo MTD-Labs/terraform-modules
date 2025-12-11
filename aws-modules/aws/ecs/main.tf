@@ -549,7 +549,15 @@ data "archive_file" "logs_to_slack_zip" {
                   continue
 
               lower = message.lower()
+
+              # Skip lines that are not error or warn at all
               if "error" not in lower and "warn" not in lower:
+                  continue
+
+              # Skip known noisy startup logs
+              if "/admin/error-messages/sync" in message:
+                  continue
+              if "loaded 60 error" in lower:
                   continue
 
               # Strip ANSI color codes
@@ -569,6 +577,7 @@ data "archive_file" "logs_to_slack_zip" {
               send_to_slack(text)
 
           return {"statusCode": 200}
+
       EOF
   }
 }
