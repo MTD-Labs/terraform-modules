@@ -248,7 +248,7 @@ resource "null_resource" "service_env_files" {
 }
 
 resource "null_resource" "dev_provisioning" {
-  count      = var.env == "stage" ? 1 : 0
+  count = contains(["stage", "qa"], var.env) ? 1 : 0
   depends_on = [null_resource.wait_for_cloud_init, null_resource.service_env_files]
   triggers = {
     # Force recreation when any of these files change
@@ -388,7 +388,7 @@ resource "aws_iam_instance_profile" "ssm_profile" {
 resource "cloudflare_record" "stage_a" {
   count           = var.cloudflare_record_enable ? 1 : 0
   zone_id         = data.cloudflare_zone.this.id
-  name            = "stage"
+  name            = var.env
   type            = "A"
   content         = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
   ttl             = 1
@@ -400,7 +400,7 @@ resource "cloudflare_record" "stage_a" {
 resource "cloudflare_record" "stage_wildcard_a" {
   count           = var.cloudflare_record_enable ? 1 : 0
   zone_id         = data.cloudflare_zone.this.id
-  name            = "*.stage"
+  name            = "*.${var.env}"
   type            = "A"
   content         = var.enable_public_access ? aws_eip.eip[0].public_ip : aws_instance.bastion.private_ip
   ttl             = 1
