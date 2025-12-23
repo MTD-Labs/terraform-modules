@@ -11,7 +11,7 @@ locals {
       allowed_methods = ["GET", "HEAD", "POST", "PUT"]
       allowed_origins = ["*"]
       expose_headers  = ["ETag", "Content-Length"]
-      max_age_seconds = 86400
+      max_age_seconds = 0
     },
     # Only if your frontend uploads direct to S3:
     # {
