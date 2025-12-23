@@ -555,7 +555,7 @@ data "archive_file" "logs_to_slack_zip" {
                   continue
 
               # Skip known noisy startup logs
-              if "/admin/error-messages/sync" in message:
+              if "/error" in message:
                   continue
               if "loaded 60 error" in lower:
                   continue
