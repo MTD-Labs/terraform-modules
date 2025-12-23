@@ -8,19 +8,19 @@ locals {
   cors_rules_map = [
     {
       allowed_headers = ["*"]
-      allowed_methods = ["GET", "HEAD"]
+      allowed_methods = ["GET", "HEAD", "POST", "PUT"]
       allowed_origins = ["*"]
-      expose_headers  = ["ETag", "Cache-Control", "Content-Type", "Content-Length"]
+      expose_headers  = ["ETag", "Content-Length"]
       max_age_seconds = 86400
     },
     # Only if your frontend uploads direct to S3:
-    {
-      allowed_headers = ["*"]
-      allowed_methods = ["PUT", "POST", "HEAD"] # <-- removed OPTIONS (unsupported by S3 CORS)
-      allowed_origins = ["*"]
-      expose_headers  = ["ETag"]
-      max_age_seconds = 86400
-    }
+    # {
+    #   allowed_headers = ["*"]
+    #   allowed_methods = ["PUT", "POST", "HEAD"] # <-- removed OPTIONS (unsupported by S3 CORS)
+    #   allowed_origins = ["*"]
+    #   expose_headers  = ["ETag"]
+    #   max_age_seconds = 0
+    # }
   ]
 }
 
