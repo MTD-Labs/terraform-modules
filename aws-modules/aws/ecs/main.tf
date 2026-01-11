@@ -550,6 +550,21 @@ data "archive_file" "logs_to_slack_zip" {
 
               lower = message.lower()
 
+
+              # EXCLUDE: "error" when it appears inside paths, filenames, or known noisy module names
+              if "error" in lower:
+                  if (
+                      # paths / static files
+                      ("/" in lower and (
+                          ".js" in lower
+                          or ".map" in lower
+                          or ".json" in lower
+                          or "/error" in lower
+                      ))
+                      # NestJS noisy module
+                      or "errormessagesmodule" in lower
+                  ):
+                      continue
               # Skip lines that are not error or warn at all
               if "error" not in lower and "warn" not in lower:
                   continue
