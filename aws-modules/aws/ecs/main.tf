@@ -832,6 +832,35 @@ resource "aws_iam_role_policy_attachment" "ecs_scale_to_slack_attach" {
   policy_arn = aws_iam_policy.ecs_scale_to_slack_policy[0].arn
 }
 
+resource "aws_iam_role_policy_attachment" "ecs_task_s3_full_access" {
+  role       = aws_iam_role.task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+}
+
+resource "aws_iam_policy" "ecs_task_s3_policy" {
+  name = "${var.cluster_name}-ecs-task-s3"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "s3:*"
+        Resource = [
+          "arn:aws:s3:::*",
+          "arn:aws:s3:::*/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_s3_attach" {
+  role       = aws_iam_role.task_role.name
+  policy_arn = aws_iam_policy.ecs_task_s3_policy.arn
+}
+
+
 resource "aws_lambda_function" "ecs_scale_to_slack" {
   count = var.ecs_scale_alarm_enabled ? 1 : 0
 
