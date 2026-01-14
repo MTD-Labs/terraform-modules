@@ -552,6 +552,8 @@ data "archive_file" "logs_to_slack_zip" {
 
               if "indexedDB is not defined" in lower:
                   continue
+              if "0 errors" in lower:
+                  continue
               # EXCLUDE: "error" when it appears inside paths, filenames, or known noisy module names
               if "error" in lower:
                   if (
