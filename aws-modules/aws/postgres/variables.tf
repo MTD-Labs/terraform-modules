@@ -83,9 +83,17 @@ variable "rds_cluster_parameters" {
 }
 
 variable "rds_db_parameters" {
-  description = "A map of parameters for RDS database instances, if applicable"
-  type        = map(string)
-  default     = {}
+  description = "PostgreSQL RDS parameters with apply method"
+  type = map(object({
+    value        = string
+    apply_method = string
+  }))
+  default = {
+    "rds.force_ssl" = {
+      value        = "0"
+      apply_method = "immediate"
+    }
+  }
 }
 
 variable "allow_vpc_cidr_block" {
