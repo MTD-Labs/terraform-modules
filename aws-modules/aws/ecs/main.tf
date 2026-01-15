@@ -554,6 +554,8 @@ data "archive_file" "logs_to_slack_zip" {
                   continue
               if "0 errors" in lower:
                   continue
+              if "FerrorLayouts" in lower:
+                  continue
               # EXCLUDE: "error" when it appears inside paths, filenames, or known noisy module names
               if "error" in lower:
                   if (
