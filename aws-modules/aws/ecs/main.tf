@@ -556,6 +556,7 @@ data "archive_file" "logs_to_slack_zip" {
                   "incorrect locale information provided",
                   "ferrorlayouts",
                   "loaded 60 error",
+                  "might be from an older or newer deployment",
               ]
               if any(x in lower for x in EXCLUDES):
                 continue
