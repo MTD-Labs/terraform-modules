@@ -101,6 +101,10 @@ variable "ecs_containers" {
     priority             = optional(number)
     port                 = number
     service_domain       = string
+    cpu_scale_out_cooldown = number
+    cpu_scale_in_cooldown  = number
+    mem_scale_out_cooldown = number
+    mem_scale_in_cooldown  = number
     envs                 = map(string)
     secrets              = map(string)
     health_check         = map(string)
@@ -128,6 +132,10 @@ variable "ecs_containers" {
       max_count            = 10
       target_cpu_threshold = 75
       target_mem_threshold = 80
+      cpu_scale_out_cooldown = 60
+      cpu_scale_in_cooldown  = 60
+      mem_scale_out_cooldown = 60
+      mem_scale_in_cooldown  = 60
       path                 = ["/"]
       priority             = 20
       port                 = 8080
@@ -164,6 +172,10 @@ variable "ecs_containers" {
       max_count            = 10
       target_cpu_threshold = 75
       target_mem_threshold = 80
+      cpu_scale_out_cooldown = 60
+      cpu_scale_in_cooldown  = 60
+      mem_scale_out_cooldown = 60
+      mem_scale_in_cooldown  = 60
       path                 = ["/api"]
       priority             = 10
       port                 = 8081

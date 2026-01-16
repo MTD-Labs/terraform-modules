@@ -288,14 +288,16 @@ resource "aws_appautoscaling_target" "ecs_target" {
 
 resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
   for_each           = { for idx, container in var.containers : idx => container }
-  name               = format("%s-%s", each.value["name"], "cpu-policy")
+  name               = "${each.value.name}-cpu-policy"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target[each.key].resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_target[each.key].scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_target[each.key].service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value = each.value["target_cpu_threshold"]
+    target_value       = each.value.target_cpu_threshold
+    scale_out_cooldown = each.value.cpu_scale_out_cooldown
+    scale_in_cooldown  = each.value.cpu_scale_in_cooldown
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageCPUUtilization"
@@ -305,14 +307,16 @@ resource "aws_appautoscaling_policy" "ecs_cpu_policy" {
 
 resource "aws_appautoscaling_policy" "ecs_memory_policy" {
   for_each           = { for idx, container in var.containers : idx => container }
-  name               = format("%s-%s", each.value["name"], "memory-policy")
+  name               = "${each.value.name}-memory-policy"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.ecs_target[each.key].resource_id
   scalable_dimension = aws_appautoscaling_target.ecs_target[each.key].scalable_dimension
   service_namespace  = aws_appautoscaling_target.ecs_target[each.key].service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value = each.value["target_mem_threshold"]
+    target_value       = each.value.target_mem_threshold
+    scale_out_cooldown = each.value.mem_scale_out_cooldown
+    scale_in_cooldown  = each.value.mem_scale_in_cooldown
 
     predefined_metric_specification {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"

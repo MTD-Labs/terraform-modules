@@ -53,17 +53,28 @@ variable "containers" {
     command              = list(string)
     cpu                  = number
     memory               = number
+
     min_count            = number
     max_count            = number
+
     target_cpu_threshold = number
     target_mem_threshold = number
-    path                 = list(string)
-    port                 = number
-    service_domain       = string
-    priority             = number
-    envs                 = map(string)
-    secrets              = map(string)
-    health_check         = map(string)
+
+    cpu_scale_out_cooldown = number
+    cpu_scale_in_cooldown  = number
+    mem_scale_out_cooldown = number
+    mem_scale_in_cooldown  = number
+
+    path           = list(string)
+    port           = number
+    service_domain = string
+    priority       = number
+
+    envs    = map(string)
+    secrets = map(string)
+
+    health_check = map(string)
+
     container_health_check = optional(object({
       command      = optional(string)
       interval     = optional(number)
@@ -71,87 +82,13 @@ variable "containers" {
       timeout      = optional(number)
       start_period = optional(number)
     }))
+
     volumes = optional(list(object({
       name           = string
       container_path = string
       read_only      = optional(bool)
     })), [])
   }))
-  default = [
-    {
-      name                 = "web-container"
-      image                = "nginx:latest"
-      command              = []
-      cpu                  = 256
-      memory               = 512
-      min_count            = 1
-      max_count            = 10
-      target_cpu_threshold = 75
-      target_mem_threshold = 80
-      path                 = ["/"]
-      priority             = 20
-      port                 = 8080
-      service_domain       = "domaon.example.com"
-      envs                 = { ENV_VAR1 = "value1" }
-      secrets              = { SECRET1 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret1" }
-
-      health_check = {
-        matcher = "200"
-        path    = "/"
-      }
-      container_health_check = {
-        command      = "curl -f http://localhost:8080/ || exit 1"
-        interval     = 30
-        retries      = 3
-        timeout      = 5
-        start_period = 60
-      }
-      volumes = [
-        {
-          name           = "web-container-efs-storage"
-          container_path = "/opt/web-container-data"
-          read_only      = false
-        }
-      ]
-    },
-    {
-      name                 = "api-container"
-      image                = "my-api:latest"
-      command              = ["startup.sh"]
-      cpu                  = 512
-      memory               = 1024
-      min_count            = 1
-      max_count            = 10
-      target_cpu_threshold = 75
-      target_mem_threshold = 80
-      path                 = ["/api"]
-      priority             = 10
-      port                 = 8081
-      service_domain       = "domaon.example.com"
-      envs                 = { ENV_VAR1 = "value1" }
-      secrets              = { SECRET1 = "arn:aws:ssm:ap-south-1:awsAccountID:parameter/secret1" }
-
-      health_check = {
-        matcher = "200"
-        path    = "/"
-      }
-      container_health_check = {
-        command      = "curl -f http://localhost:8081/api/health || exit 1"
-        interval     = 30
-        retries      = 3
-        timeout      = 5
-        start_period = 90
-      }
-      volumes = [
-        {
-          name           = "api-container-efs-storage"
-          container_path = "/opt/api-container-data"
-          read_only      = false
-        }
-      ]
-    }
-    # Add more containers as needed
-  ]
 }
 
 variable "loki_enabled" {

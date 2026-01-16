@@ -20,6 +20,10 @@ locals {
       max_count              = container.max_count
       target_cpu_threshold   = container.target_cpu_threshold
       target_mem_threshold   = container.target_mem_threshold
+      cpu_scale_out_cooldown = container.cpu_scale_out_cooldown
+      cpu_scale_in_cooldown  = container.cpu_scale_in_cooldown
+      mem_scale_out_cooldown = container.mem_scale_out_cooldown
+      mem_scale_in_cooldown  = container.mem_scale_in_cooldown
       path                   = container.path
       priority               = container.priority
       port                   = container.port
