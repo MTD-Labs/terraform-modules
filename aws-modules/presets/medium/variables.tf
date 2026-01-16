@@ -1407,3 +1407,9 @@ variable "ecs_scale_alarm_ok_notifications" {
   type        = bool
   default     = true
 }
+
+variable "cloudwatch_log_retention_days" {
+  description = "CloudWatch Logs retention in days for ECS containers"
+  type        = number
+  default     = 14
+}

@@ -152,6 +152,7 @@ module "ecs" {
   ecs_scale_alarm_enabled           = var.ecs_scale_alarm_enabled
   ecs_scale_alarm_slack_webhook_url = var.ecs_scale_alarm_slack_webhook_url
   ecs_scale_alarm_ok_notifications  = var.ecs_scale_alarm_ok_notifications
+  cloudwatch_log_retention_days = var.cloudwatch_log_retention_days
 
 }
 
