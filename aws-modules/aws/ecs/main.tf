@@ -561,6 +561,7 @@ data "archive_file" "logs_to_slack_zip" {
                   "ferrorlayouts",
                   "loaded 60 error",
                   "might be from an older or newer deployment",
+                  "error: invalid server actions request"
               ]
               if any(x in lower for x in EXCLUDES):
                 continue
