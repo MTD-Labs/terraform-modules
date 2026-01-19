@@ -1425,3 +1425,9 @@ variable "cloudwatch_log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "alb_preserve_host_header" {
+  type        = bool
+  description = "ALB Preserve Host Headers"
+  default     = true
+}

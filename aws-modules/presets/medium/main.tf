@@ -91,6 +91,8 @@ module "alb" {
   cloudflare_zone          = var.cloudflare_zone
   create_cloudflare_record = var.create_cloudflare_record
   cloudflare_ttl           = var.cloudflare_ttl
+
+  preserve_host_header = var.alb_preserve_host_header
 }
 
 module "ecr" {

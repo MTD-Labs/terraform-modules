@@ -20,7 +20,7 @@ resource "aws_alb" "alb" {
   name            = local.name
   security_groups = [aws_security_group.alb[0].id]
   subnets         = var.vpc_subnets
-
+  preserve_host_header    = var.preserve_host_header
   idle_timeout = var.idle_timeout
 
   tags = local.tags

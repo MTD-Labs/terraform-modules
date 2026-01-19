@@ -150,3 +150,9 @@ variable "cloudflare_ttl" {
   description = "Record TTL"
   default     = 300
 }
+
+variable "preserve_host_header" {
+  type        = bool
+  description = "Preserve Host Headers"
+  default     = true
+}
