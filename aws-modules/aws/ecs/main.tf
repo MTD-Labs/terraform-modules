@@ -552,11 +552,11 @@ data "archive_file" "logs_to_slack_zip" {
               if not message:
                   continue
 
-              # EXCLUDE DEBUG logs immediately
-              if "[DEBUG]" in message:
-                  continue
-
               lower = message.lower()
+
+              # EXCLUDE DEBUG logs (any case)
+              if "[debug]" in lower:
+                  continue
               EXCLUDES = [
                   "indexeddb is not defined",
                   "0 errors",
