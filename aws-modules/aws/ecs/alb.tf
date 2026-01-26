@@ -66,6 +66,18 @@ resource "aws_alb_listener_rule" "https_listener_rule" {
     }
   }
 
+  dynamic "condition" {
+    for_each = length(var.domain_name) > 0 ? [1] : []
+    content {
+      host_header {
+        values = [
+          var.domain_name,
+          "*.${var.domain_name}",
+        ]
+      }
+    }
+  }
+
   tags = merge({
     Name = each.value["name"]
   }, local.common_tags)

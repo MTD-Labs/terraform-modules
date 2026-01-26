@@ -253,3 +253,9 @@ variable "cloudwatch_log_retention_days" {
   type        = number
   default     = 14
 }
+
+variable "domain_name" {
+  type        = string
+  description = "Primary domain for ALB host-header routing (e.g. trendex.one)"
+  default     = ""
+}
