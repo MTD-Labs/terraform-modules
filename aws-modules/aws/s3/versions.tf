@@ -5,7 +5,7 @@ terraform {
 
   required_providers {
     aws = {
-      version               = ">= 5.25.0"
+      version               = ">= 6.0"
       configuration_aliases = [aws.main]
     }
     local = ">= 2.2.2"
