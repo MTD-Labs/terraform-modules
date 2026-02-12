@@ -812,3 +812,93 @@ module "eks_apps" {
   chart_version    = var.chart_version
   depends_on       = [module.eks, module.external_secrets]
 }
+
+
+
+####### DOCDB Upgrade ##############
+
+module "docdb_v8" {
+  count  = var.docdb_v8_enabled ? 1 : 0
+  source = "../../aws/docdb"
+
+  providers = {
+    aws.main = aws.main
+  }
+
+  env  = var.env
+  name = "${var.name}-8-0"
+  tags = var.tags
+
+  vpc_id                  = module.vpc.vpc_id
+  vpc_subnets             = module.vpc.private_subnets
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+
+  engine_version                = var.docdb_v8_engine_version
+  family                        = var.docdb_v8_family
+  instance_class                = var.docdb_v8_instance_class
+  instance_count                = var.docdb_v8_instance_count
+  cluster_parameters            = var.docdb_v8_cluster_parameters
+  allow_vpc_cidr_block          = var.docdb_v8_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks = var.docdb_v8_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks     = var.docdb_v8_extra_allowed_cidr_blocks
+  backup_retention_period       = var.docdb_v8_backup_retention_period
+  preferred_maintenance_window  = var.docdb_v8_preferred_maintenance_window
+  preferred_backup_window       = var.docdb_v8_preferred_backup_window
+  master_username               = var.docdb_v8_master_username
+
+  kms_ssm_key_arn           = var.docdb_v8_kms_ssm_key_arn
+  kms_key_arn               = var.docdb_v8_kms_key_arn
+  bastion_security_group_id = var.bastion_enabled ? module.ec2[0].security_group_id : ""
+
+  apply_immediately               = var.docdb_v8_apply_immediately
+  skip_final_snapshot             = var.docdb_v8_skip_final_snapshot
+  enabled_cloudwatch_logs_exports = var.docdb_v8_enabled_cloudwatch_logs_exports
+  deletion_protection             = var.docdb_v8_deletion_protection
+  auto_minor_version_upgrade      = var.docdb_v8_auto_minor_version_upgrade
+
+  enable_docdb_alarms                 = var.enable_docdb_v8_alarms
+  docdb_cpu_threshold                 = var.docdb_v8_cpu_threshold
+  docdb_free_memory_threshold_bytes   = var.docdb_v8_free_memory_threshold_bytes
+  docdb_connection_zero_alarm_periods = var.docdb_v8_connection_zero_alarm_periods
+}
+
+# IAM policy for ECS to access DocumentDB (if ECS is enabled)
+resource "aws_iam_policy" "ecs_v8_docdb_access" {
+  count = var.docdb_v8_enabled && var.ecs_enabled ? 1 : 0
+
+  name        = "${var.env}-v8-${var.name}-docdb-access"
+  description = "Access to DocumentDB for ECS tasks"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters"
+        ]
+        Resource = [
+          "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter/${var.env}-docdb-${var.name}-master-password"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "docdb:DescribeDBClusters",
+          "docdb:DescribeDBInstances",
+          "docdb:ListTagsForResource"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = var.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_docdb_policy" {
+  count      = var.docdb_v8_enabled && var.ecs_enabled ? 1 : 0
+  role       = module.ecs[0].ecs_task_exec_role_name
+  policy_arn = aws_iam_policy.ecs_v8_docdb_access[0].arn
+}

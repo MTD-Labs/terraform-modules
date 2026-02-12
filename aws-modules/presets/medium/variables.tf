@@ -1431,3 +1431,170 @@ variable "alb_preserve_host_header" {
   description = "ALB Preserve Host Headers"
   default     = true
 }
+
+
+
+################## NEW DOCDB #####################
+variable "docdb_v8_engine_version" {
+  description = "DocumentDB engine version"
+  type        = string
+  default     = "5.0.0"
+}
+
+variable "docdb_v8_family" {
+  description = "DocumentDB parameter group family"
+  type        = string
+  default     = "docdb5.0"
+}
+
+variable "docdb_v8_instance_class" {
+  description = "Instance class for DocumentDB instances"
+  type        = string
+  default     = "db.t3.medium"
+}
+
+variable "docdb_v8_instance_count" {
+  description = "Number of DocumentDB instances to create"
+  type        = number
+  default     = 1
+}
+
+variable "docdb_v8_cluster_parameters" {
+  description = "A map of parameters for DocumentDB cluster"
+  type        = map(string)
+  default = {
+    tls                   = "disabled"
+    ttl_monitor           = "enabled"
+    audit_logs            = "disabled"
+    profiler              = "disabled"
+    profiler_threshold_ms = "100"
+  }
+}
+
+variable "docdb_v8_allow_vpc_cidr_block" {
+  description = "Allow full VPC CIDR block for DocumentDB access"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_v8_allow_vpc_private_cidr_blocks" {
+  description = "Allow VPC private CIDR blocks for DocumentDB access"
+  type        = bool
+  default     = true
+}
+
+variable "docdb_v8_extra_allowed_cidr_blocks" {
+  description = "Extra allowed CIDR blocks for DocumentDB"
+  type        = string
+  default     = ""
+}
+
+variable "docdb_v8_backup_retention_period" {
+  description = "The days to retain DocumentDB backups"
+  type        = number
+  default     = 7
+}
+
+variable "docdb_v8_preferred_maintenance_window" {
+  description = "The weekly time range for DocumentDB maintenance (UTC)"
+  type        = string
+  default     = "sun:03:00-sun:06:00"
+}
+
+variable "docdb_v8_preferred_backup_window" {
+  description = "The daily time range for DocumentDB backups (UTC)"
+  type        = string
+  default     = "00:00-02:00"
+}
+
+variable "docdb_v8_master_username" {
+  description = "Master username for DocumentDB"
+  type        = string
+  default     = "docdbadmin"
+}
+
+variable "docdb_v8_kms_ssm_key_arn" {
+  description = "ARN of the AWS KMS key used for SSM encryption for DocumentDB"
+  type        = string
+  default     = "alias/aws/ssm"
+}
+
+variable "docdb_v8_kms_key_arn" {
+  description = "ARN of the AWS KMS key used for DocumentDB encryption"
+  type        = string
+  default     = ""
+}
+
+variable "docdb_v8_apply_immediately" {
+  description = "Specifies whether DocumentDB cluster modifications are applied immediately"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_v8_enabled_cloudwatch_logs_exports" {
+  description = "List of log types to export to CloudWatch for DocumentDB"
+  type        = list(string)
+  default     = ["audit", "profiler"]
+}
+
+variable "docdb_v8_auto_minor_version_upgrade" {
+  description = "Indicates that minor engine upgrades will be applied automatically to DocumentDB"
+  type        = bool
+  default     = true
+}
+
+variable "kms_ssm_key_arn" {
+  description = "KMS key ARN for encrypting SSM parameters (shared with other modules)"
+  type        = string
+  default     = "alias/aws/ssm"
+}
+
+variable "docdb_v8_kms_key_id" {
+  description = "KMS key ID or ARN for encrypting DocumentDB storage (optional)"
+  type        = string
+  default     = null
+}
+
+variable "docdb_v8_deletion_protection" {
+  description = "Enable deletion protection on the DocumentDB cluster"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_v8_skip_final_snapshot" {
+  description = "Skip creation of a final snapshot when deleting the cluster"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_v8_enabled" {
+  description = "Enable DocDB"
+  type        = bool
+  default     = false
+}
+
+
+variable "enable_docdb_v8_alarms" {
+  description = "Enable CloudWatch -> SNS -> Telegram alerts for Amazon DocumentDB"
+  type        = bool
+  default     = false
+}
+
+variable "docdb_v8_cpu_threshold" {
+  description = "CPU utilization threshold for DocDB alarm (%)"
+  type        = number
+  default     = 80
+}
+
+variable "docdb_v8_free_memory_threshold_bytes" {
+  description = "DocDB FreeableMemory low threshold in bytes"
+  type        = number
+  # Example: 2 GiB
+  default = 2147483648
+}
+
+variable "docdb_v8_connection_zero_alarm_periods" {
+  description = "Number of 5-minute periods with 0 connections before 'uptime' alarm"
+  type        = number
+  default     = 3
+}
