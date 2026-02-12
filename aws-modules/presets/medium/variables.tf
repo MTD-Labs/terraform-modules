@@ -1543,11 +1543,6 @@ variable "docdb_v8_auto_minor_version_upgrade" {
   default     = true
 }
 
-variable "kms_ssm_key_arn" {
-  description = "KMS key ARN for encrypting SSM parameters (shared with other modules)"
-  type        = string
-  default     = "alias/aws/ssm"
-}
 
 variable "docdb_v8_kms_key_id" {
   description = "KMS key ID or ARN for encrypting DocumentDB storage (optional)"

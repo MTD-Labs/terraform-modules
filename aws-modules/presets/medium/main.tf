@@ -897,7 +897,7 @@ resource "aws_iam_policy" "ecs_v8_docdb_access" {
   tags = var.tags
 }
 
-resource "aws_iam_role_policy_attachment" "ecs_task_docdb_policy" {
+resource "aws_iam_role_policy_attachment" "ecs_task_v8_docdb_policy" {
   count      = var.docdb_v8_enabled && var.ecs_enabled ? 1 : 0
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = aws_iam_policy.ecs_v8_docdb_access[0].arn
