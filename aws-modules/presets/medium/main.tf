@@ -915,7 +915,7 @@ module "subgraph_postgres" {
 
   vpc_id                  = module.vpc.vpc_id
   vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
-  vpc_subnets             = module.vpc.database_subnets
+  vpc_subnets             = module.vpc.public_subnets
   vpc_subnet_group_name   = module.vpc.database_subnet_group_name
 
   rds_type                      = var.subgraph_postgres_rds_type
@@ -929,6 +929,7 @@ module "subgraph_postgres" {
   allow_vpc_cidr_block          = var.subgraph_postgres_allow_vpc_cidr_block
   allow_vpc_private_cidr_blocks = var.subgraph_postgres_allow_vpc_private_cidr_blocks
   extra_allowed_cidr_blocks     = var.subgraph_postgres_extra_allowed_cidr_blocks
+  rds_publicly_accessible       = true
   backup_retention_period       = var.subgraph_backup_retention_period
   preferred_maintenance_window  = var.subgraph_postgres_preferred_maintenance_window
   preferred_backup_window       = var.subgraph_postgres_preferred_backup_window

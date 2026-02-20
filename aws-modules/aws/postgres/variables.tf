@@ -109,11 +109,10 @@ variable "allow_vpc_private_cidr_blocks" {
 }
 
 variable "extra_allowed_cidr_blocks" {
-  description = "extra allowed cidr blocks"
-  type        = string
-  default     = "10.0.0.0/8"
+  description = "Extra allowed CIDR blocks"
+  type        = list(string)
+  default     = ["10.0.0.0/8"]
 }
-
 variable "backup_retention_period" {
   description = "The days to retain backups for"
   type        = number
@@ -215,4 +214,10 @@ variable "rds_storage_usage_threshold_percent" {
   description = "Usage percentage at which to alarm for RDS disk (e.g. 80 => alarm when used >= 80%, i.e. free <= 20%)"
   type        = number
   default     = 80
+}
+
+variable "rds_publicly_accessible" {
+  description = "Rds Public Access"
+  type        = bool
+  default     = false
 }

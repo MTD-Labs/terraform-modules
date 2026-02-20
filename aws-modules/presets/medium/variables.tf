@@ -289,9 +289,9 @@ variable "postgres_allow_vpc_private_cidr_blocks" {
 }
 
 variable "postgres_extra_allowed_cidr_blocks" {
-  description = "extra allowed cidr blocks"
-  type        = string
-  default     = "10.0.0.0/8"
+  description = "Extra allowed CIDR blocks"
+  type        = list(string)
+  default     = ["10.0.0.0/8"]
 }
 
 variable "backup_retention_period" {
@@ -1671,9 +1671,9 @@ variable "subgraph_postgres_allow_vpc_private_cidr_blocks" {
 }
 
 variable "subgraph_postgres_extra_allowed_cidr_blocks" {
-  description = "extra allowed cidr blocks"
-  type        = string
-  default     = "10.0.0.0/8"
+  description = "Extra allowed CIDR blocks"
+  type        = list(string)
+  default     = ["10.0.0.0/8"]
 }
 
 variable "subgraph_backup_retention_period" {

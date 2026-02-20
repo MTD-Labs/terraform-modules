@@ -23,7 +23,7 @@ locals {
   allowed_cidr_blocks = compact(concat(
     var.allow_vpc_cidr_block ? [var.vpc_cidr_block] : [""],
     var.allow_vpc_private_cidr_blocks ? var.vpc_private_cidr_blocks : [""],
-    [var.extra_allowed_cidr_blocks]
+    var.extra_allowed_cidr_blocks
   ))
 }
 resource "random_password" "master" {
@@ -55,7 +55,7 @@ module "aurora" {
   instances = {
     1 = {
       instance_class      = var.instance_class
-      publicly_accessible = false
+      publicly_accessible = var.rds_publicly_accessible
     }
   }
 
