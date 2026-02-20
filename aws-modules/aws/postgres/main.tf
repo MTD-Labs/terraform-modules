@@ -81,6 +81,15 @@ module "aurora" {
   tags = local.tags
 }
 
+resource "aws_db_subnet_group" "public" {
+  count = var.rds_publicly_accessible ? 1 : 0
+
+  name       = "${local.name}-public-subnet-group"
+  subnet_ids = var.vpc_subnets
+
+  tags = local.tags
+}
+
 module "rds" {
   count = var.rds_type == "rds" ? 1 : 0
 
@@ -95,7 +104,7 @@ module "rds" {
   allocated_storage          = var.allocated_storage
   max_allocated_storage      = var.max_allocated_storage
   publicly_accessible        = var.rds_publicly_accessible
-  db_subnet_group_name                = var.vpc_subnet_group_name
+  db_subnet_group_name = var.rds_publicly_accessible ? aws_db_subnet_group.public[0].name : var.vpc_subnet_group_name
   create_db_subnet_group              = false
   vpc_security_group_ids              = [aws_security_group.rds_security_group.id]
   iam_database_authentication_enabled = false
