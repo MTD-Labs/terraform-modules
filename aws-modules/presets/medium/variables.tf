@@ -1593,3 +1593,171 @@ variable "docdb_v8_connection_zero_alarm_periods" {
   type        = number
   default     = 3
 }
+
+###SUBGRAPH POSTGRES ###
+
+variable "subgraph_postgres_enabled" {
+  description = "Enable Postgres RDS cluster"
+  type        = bool
+  default     = true
+}
+
+variable "subgraph_postgres_rds_type" {
+  description = "Simple RDS or Aurora"
+  type        = string
+  default     = "rds"
+}
+
+variable "subgraph_postgres_engine_version" {
+  description = "Engine version"
+  type        = string
+  default     = "15.5"
+}
+
+variable "subgraph_postgres_family" {
+  description = "Engine version"
+  type        = string
+  default     = "postgres15"
+}
+
+variable "subgraph_postgres_instance_class" {
+  description = "Instance class used"
+  type        = string
+  default     = "db.t3.medium"
+}
+
+variable "subgraph_postgres_allocated_storage" {
+  description = "Storage amount for DB"
+  type        = number
+  default     = 10
+}
+
+variable "subgraph_postgres_max_allocated_storage" {
+  description = "Maximum storage amount for DB (enables autoscaling), 0 is disabled"
+  type        = number
+  default     = 0
+}
+
+variable "subgraph_postgres_rds_cluster_parameters" {
+  description = "A map of parameters for RDS Aurora cluster, if applicable"
+  type        = map(string)
+  default     = {}
+}
+
+variable "subgraph_postgres_rds_db_parameters" {
+  description = "PostgreSQL RDS parameters with apply method"
+  type = map(object({
+    value        = string
+    apply_method = string
+  }))
+  default = {
+    "rds.force_ssl" = {
+      value        = "0"
+      apply_method = "immediate"
+    }
+  }
+}
+
+variable "subgraph_postgres_allow_vpc_cidr_block" {
+  description = "Allow full VPC CIDR block for access"
+  type        = bool
+  default     = false
+}
+
+variable "subgraph_postgres_allow_vpc_private_cidr_blocks" {
+  description = "Allow VPC private CIDR blocks for access"
+  type        = bool
+  default     = true
+}
+
+variable "subgraph_postgres_extra_allowed_cidr_blocks" {
+  description = "extra allowed cidr blocks"
+  type        = string
+  default     = "10.0.0.0/8"
+}
+
+variable "subgraph_backup_retention_period" {
+  description = "The days to retain backups for"
+  type        = number
+  default     = 7
+}
+
+variable "subgraph_postgres_preferred_maintenance_window" {
+  description = "The weekly time range during which system maintenance can occur, in (UTC)"
+  type        = string
+  default     = "Sat:00:00-Sat:03:00"
+}
+
+variable "subgraph_postgres_preferred_backup_window" {
+  description = "The daily time range during which automated backups are created if automated backups are enabled using the `backup_retention_period` parameter. Time in UTC"
+  type        = string
+  default     = "03:00-06:00"
+}
+
+variable "subgraph_postgres_master_username" {
+  description = "master username"
+  type        = string
+  default     = "postgres"
+}
+
+variable "subgraph_postgres_database_name" {
+  description = "Database name to create initially"
+  type        = string
+  default     = "laravel"
+}
+
+variable "subgraph_postgres_kms_ssm_key_arn" {
+  type        = string
+  description = "ARN of the AWS KMS key used for SSM encryption"
+  default     = "alias/aws/ssm"
+}
+
+variable "subgraph_postgres_database_user_map" {
+  type        = map(string)
+  description = "Map of databases and their users to create in RDS instance"
+  default     = {}
+}
+
+variable "subgraph_enable_rds_alarms" {
+  description = "Enable CloudWatch + SNS + Lambda alerts for RDS"
+  type        = bool
+  default     = false
+}
+
+variable "subgraph_rds_cpu_threshold" {
+  description = "CPUUtilization alarm threshold (%)"
+  type        = number
+  default     = 80
+}
+
+variable "subgraph_rds_free_memory_threshold_bytes" {
+  description = "FreeableMemory alarm threshold in bytes"
+  type        = number
+  default     = 2147483648
+}
+
+variable "subgraph_rds_event_categories" {
+  description = "RDS event categories to subscribe to"
+  type        = list(string)
+  default = [
+    "availability",
+    "deletion",
+    "failover",
+    "failure",
+    "maintenance",
+    "recovery",
+    "restoration"
+  ]
+}
+
+variable "subgraph_enable_rds_storage_alarm" {
+  description = "Enable RDS storage (disk usage) alarm"
+  type        = bool
+  default     = true
+}
+
+variable "subgraph_rds_storage_usage_threshold_percent" {
+  description = "Usage percentage at which to alarm for RDS disk (e.g. 80 => alarm when used >= 80%, i.e. free <= 20%)"
+  type        = number
+  default     = 80
+}

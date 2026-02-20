@@ -902,3 +902,45 @@ resource "aws_iam_role_policy_attachment" "ecs_task_v8_docdb_policy" {
   role       = module.ecs[0].ecs_task_exec_role_name
   policy_arn = aws_iam_policy.ecs_v8_docdb_access[0].arn
 }
+
+module "subgraph_postgres" {
+  bastion_security_group_id = module.ec2[0].security_group_id
+  count                     = var.subgraph_postgres_enabled == true ? 1 : 0
+  source                    = "../../aws/postgres"
+
+  region = var.region
+  env    = var.env
+  name   = "subgraph-${var.name}"
+  tags   = var.tags
+
+  vpc_id                  = module.vpc.vpc_id
+  vpc_private_cidr_blocks = module.vpc.private_subnets_cidr_blocks
+  vpc_subnets             = module.vpc.database_subnets
+  vpc_subnet_group_name   = module.vpc.database_subnet_group_name
+
+  rds_type                      = var.subgraph_postgres_rds_type
+  engine_version                = var.subgraph_postgres_engine_version
+  family                        = var.subgraph_postgres_family
+  instance_class                = var.subgraph_postgres_instance_class
+  allocated_storage             = var.subgraph_postgres_allocated_storage
+  max_allocated_storage         = var.subgraph_postgres_max_allocated_storage
+  rds_cluster_parameters        = var.subgraph_postgres_rds_cluster_parameters
+  rds_db_parameters             = var.subgraph_postgres_rds_db_parameters
+  allow_vpc_cidr_block          = var.subgraph_postgres_allow_vpc_cidr_block
+  allow_vpc_private_cidr_blocks = var.subgraph_postgres_allow_vpc_private_cidr_blocks
+  extra_allowed_cidr_blocks     = var.subgraph_postgres_extra_allowed_cidr_blocks
+  backup_retention_period       = var.subgraph_backup_retention_period
+  preferred_maintenance_window  = var.subgraph_postgres_preferred_maintenance_window
+  preferred_backup_window       = var.subgraph_postgres_preferred_backup_window
+  master_username               = var.subgraph_postgres_master_username
+  database_name                 = var.subgraph_postgres_database_name
+  database_user_map             = var.subgraph_postgres_database_user_map
+
+  enable_rds_alarms               = var.subgraph_enable_rds_alarms
+  rds_cpu_threshold               = var.subgraph_rds_cpu_threshold
+  rds_free_memory_threshold_bytes = var.subgraph_rds_free_memory_threshold_bytes
+  rds_event_categories            = var.subgraph_rds_event_categories
+
+  enable_rds_storage_alarm            = var.subgraph_enable_rds_storage_alarm
+  rds_storage_usage_threshold_percent = var.subgraph_rds_storage_usage_threshold_percent
+}
