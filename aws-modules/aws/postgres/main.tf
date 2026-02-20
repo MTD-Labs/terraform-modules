@@ -94,7 +94,7 @@ module "rds" {
   instance_class             = var.instance_class
   allocated_storage          = var.allocated_storage
   max_allocated_storage      = var.max_allocated_storage
-
+  publicly_accessible        = var.rds_publicly_accessible
   db_subnet_group_name                = var.vpc_subnet_group_name
   create_db_subnet_group              = false
   vpc_security_group_ids              = [aws_security_group.rds_security_group.id]
