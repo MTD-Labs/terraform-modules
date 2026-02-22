@@ -493,6 +493,7 @@ module "ingress" {
   }
 
   env              = var.env
+  region           = var.region
   cluster_name     = module.eks[0].cluster_name
   cluster_endpoint = module.eks[0].cluster_endpoint
   cluster_ca_cert  = module.eks[0].cluster_certificate_authority_data
@@ -501,6 +502,15 @@ module "ingress" {
   security_groups  = [module.eks[0].cluster_security_group_id]
   domain_name      = var.domain_name
   eks_enabled      = var.eks_enabled
+  letsencrypt_email = var.letsencrypt_email
+  cloudflare_api_secret_name = var.cloudflare_api_secret_name
+  cluster_oidc_id  = module.eks[0].cluster_oidc_id
+  vpc_id                  = module.vpc.vpc_id
+  cluster_secret_store_name   = var.eks_cluster_secret_store_name
+
+  depends_on = [
+    module.external_secrets
+  ]
 }
 
 module "grafana" {

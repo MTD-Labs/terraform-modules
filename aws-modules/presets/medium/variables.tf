@@ -1761,3 +1761,15 @@ variable "subgraph_rds_storage_usage_threshold_percent" {
   type        = number
   default     = 80
 }
+
+variable "letsencrypt_email" {
+  description = "Letsencrypt Email"
+  type        = string
+  default     = "IT_james@dexapp.ai"
+}
+
+variable "cloudflare_api_secret_name" {
+  description = "Cloudflare AWS Secret Name"
+  type        = string
+  default     = "cloudflare-api-token"
+}

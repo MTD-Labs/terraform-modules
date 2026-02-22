@@ -57,3 +57,11 @@ variable "eks_enabled" {
   type        = bool
   default     = false
 }
+variable "region" {}
+variable "vpc_id" {}
+variable "cluster_oidc_id" {}
+variable "cloudflare_api_secret_name" { sensitive = true }
+variable "cluster_secret_store_name" {
+  description = "Name of ClusterSecretStore for External Secrets"
+}
+variable "letsencrypt_email" {}
