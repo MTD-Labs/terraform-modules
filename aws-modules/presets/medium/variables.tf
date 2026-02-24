@@ -1773,3 +1773,15 @@ variable "cloudflare_api_secret_name" {
   type        = string
   default     = "cloudflare-api-token"
 }
+
+variable "allowed_tcp_ports" {
+  type        = list(number)
+  description = "Default set of TCP ports to allow in Security Group for ingress"
+  default     = [22, 80, 443]
+}
+
+variable "allowed_udp_ports" {
+  type        = list(number)
+  description = "Default set of UDP ports to allow in Security Group for ingress"
+  default     = []
+}

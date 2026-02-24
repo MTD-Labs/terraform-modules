@@ -273,8 +273,8 @@ module "ec2" {
   public_subnet_id  = module.vpc.public_subnets[0]
 
   ssh_authorized_keys_secret = var.bastion_ssh_authorized_keys_secret
-  allowed_tcp_ports          = ["22", "80", "443", "8000", "8020", "5001", "25678"]
-  allowed_udp_ports          = ["51820"]
+  allowed_tcp_ports          = var.allowed_tcp_ports
+  allowed_udp_ports          = var.allowed_udp_ports
   grafana_enabled            = var.grafana_enabled
   grafana_domain             = var.grafana_domain
   ecr_user_id                = var.ecr_user_id
