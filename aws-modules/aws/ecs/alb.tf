@@ -95,7 +95,7 @@ resource "aws_alb_target_group" "service_target_group" {
   port                 = each.value["port"]
   protocol             = "HTTP"
   vpc_id               = var.vpc_id
-  deregistration_delay = 5
+  deregistration_delay = 30
   target_type          = "ip"
 
   dynamic "health_check" {

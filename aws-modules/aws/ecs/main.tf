@@ -216,8 +216,10 @@ resource "aws_ecs_service" "container_service" {
   cluster                            = aws_ecs_cluster.cluster.id
   task_definition                    = aws_ecs_task_definition.container_task_definitions[each.key].arn
   desired_count                      = each.value["min_count"]
-  deployment_minimum_healthy_percent = floor(100 / each.value["min_count"])
-  deployment_maximum_percent         = each.value["min_count"] == 1 ? 200 : 150
+  # deployment_minimum_healthy_percent = floor(100 / each.value["min_count"])
+  # deployment_maximum_percent         = each.value["min_count"] == 1 ? 200 : 150
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
   launch_type                        = "FARGATE"
   enable_execute_command             = true
   force_new_deployment               = true
