@@ -119,7 +119,7 @@ resource "kubernetes_manifest" "cluster_issuer" {
   }
 
   depends_on = [
-    kubernetes_secret.cloudflare_token
+    kubernetes_manifest.cloudflare_external_secret
   ]
 }
 

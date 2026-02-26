@@ -2,6 +2,8 @@ data "http" "aws_lb_policy" {
   url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json"
 }
 
+data "aws_caller_identity" "current" {}
+
 data "aws_iam_policy_document" "aws_lb_controller" {
   statement {
     effect = "Allow"
