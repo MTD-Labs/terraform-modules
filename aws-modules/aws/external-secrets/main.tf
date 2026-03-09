@@ -51,6 +51,8 @@ resource "time_sleep" "wait_for_crds" {
 ########################################
 
 resource "kubernetes_manifest" "secret_store" {
+  provider = kubernetes
+
   count = var.install_external_secrets && var.create_secret_store ? 1 : 0
 
   manifest = {
@@ -81,12 +83,13 @@ resource "kubernetes_manifest" "secret_store" {
     time_sleep.wait_for_crds
   ]
 }
-
 ########################################
 # CLUSTER SECRET STORE
 ########################################
 
 resource "kubernetes_manifest" "cluster_secret_store" {
+  provider = kubernetes
+
   count = var.install_external_secrets && var.create_cluster_secret_store ? 1 : 0
 
   manifest = {
