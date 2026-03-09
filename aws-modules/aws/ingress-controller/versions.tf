@@ -15,5 +15,9 @@ terraform {
       version = "3.1.1"
       # configuration_aliases = [helm.eks]
     }
+    kubectl = {
+      source  = "gavinbunney/kubectl"
+      version = ">= 1.14.0"
+    }
   }
 }

@@ -449,20 +449,41 @@ provider "helm" {
   }
 }
 
+provider "kubectl" {
+  alias = "eks"
+
+  host                   = var.eks_enabled && length(module.eks) > 0 ? module.eks[0].cluster_endpoint : null
+  cluster_ca_certificate = var.eks_enabled && length(module.eks) > 0 ? base64decode(module.eks[0].cluster_certificate_authority_data) : null
+  load_config_file       = false
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args = compact([
+      "eks",
+      "get-token",
+      "--cluster-name",
+      var.eks_enabled && length(module.eks) > 0 ? module.eks[0].cluster_name : "",
+      "--output=json"
+    ])
+  }
+}
+
 # External Secrets Operator installation
 module "external_secrets" {
   count  = var.eks_enabled && var.eks_install_external_secrets ? 1 : 0
   source = "../../aws/external-secrets"
 
   providers = {
-    aws.main      = aws.main
-    aws.us_east_1 = aws.us_east_1
-    kubernetes    = kubernetes.eks
-    helm          = helm.eks
+    aws.main       = aws.main
+    aws.us_east_1  = aws.us_east_1
+    kubernetes = kubernetes.eks
+    helm       = helm.eks
+    kubectl    = kubectl.eks
   }
 
   region                         = var.region
-  install_external_secrets       = true
+  install_external_secrets       = var.eks_install_external_secrets
   external_secrets_chart_version = var.eks_external_secrets_chart_version
   external_secrets_role_arn      = module.eks[0].external_secrets_role_arn
   cluster_ready_dependency       = null_resource.wait_for_cluster[0]
@@ -490,6 +511,7 @@ module "ingress" {
     aws.us_east_1 = aws.us_east_1
     kubernetes    = kubernetes.eks
     helm          = helm.eks
+    kubectl       = kubectl.eks
   }
 
   env              = var.env

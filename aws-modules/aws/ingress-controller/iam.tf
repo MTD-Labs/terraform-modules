@@ -1,3 +1,7 @@
+locals {
+  oidc_provider = "oidc.eks.${var.region}.amazonaws.com/id/${var.cluster_oidc_id}"
+}
+
 data "http" "aws_lb_policy" {
   url = "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/main/docs/install/iam_policy.json"
 }
@@ -43,20 +47,33 @@ resource "aws_iam_policy" "aws_lb_controller" {
 }
 
 data "aws_iam_policy_document" "aws_lb_irsa_assume_role" {
+
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
 
     principals {
-      type        = "Federated"
+      type = "Federated"
       identifiers = [
-        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${var.cluster_oidc_id}"
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.oidc_provider}"
       ]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "${var.cluster_oidc_id}:sub"
-      values   = ["system:serviceaccount:kube-system:aws-load-balancer-controller"]
+      variable = "${local.oidc_provider}:sub"
+
+      values = [
+        "system:serviceaccount:kube-system:aws-load-balancer-controller"
+      ]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_provider}:aud"
+
+      values = [
+        "sts.amazonaws.com"
+      ]
     }
   }
 }
@@ -71,7 +88,7 @@ resource "aws_iam_role_policy_attachment" "aws_lb_attach" {
   policy_arn = aws_iam_policy.aws_lb_controller.arn
 }
 
-resource "kubernetes_service_account" "aws_lb_controller" {
+resource "kubernetes_service_account_v1" "aws_lb_controller" {
   metadata {
     name      = "aws-load-balancer-controller"
     namespace = "kube-system"

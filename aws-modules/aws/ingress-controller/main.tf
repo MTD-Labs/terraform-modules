@@ -12,7 +12,7 @@ resource "helm_release" "aws_lb_controller" {
   chart      = "aws-load-balancer-controller"
 
   depends_on = [
-    kubernetes_manifest.cloudflare_external_secret
+    kubectl_manifest.cloudflare_external_secret
   ]
 
   set = [
@@ -55,8 +55,8 @@ resource "helm_release" "cert_manager" {
   ]
 }
 
-resource "kubernetes_manifest" "cloudflare_external_secret" {
-  manifest = {
+resource "kubectl_manifest" "cloudflare_external_secret" {
+  yaml_body = yamlencode({
     apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
     metadata = {
@@ -70,28 +70,28 @@ resource "kubernetes_manifest" "cloudflare_external_secret" {
         kind = "ClusterSecretStore"
       }
       target = {
-        name = "cloudflare-api-token-secret"
+        name           = "cloudflare-api-token-secret"
         creationPolicy = "Owner"
       }
       data = [
         {
           secretKey = "api-token"
           remoteRef = {
-            key = var.cloudflare_api_secret_name
+            key      = var.cloudflare_api_secret_name
             property = "api-token"
           }
         }
       ]
     }
-  }
+  })
 
   depends_on = [
     helm_release.cert_manager
   ]
 }
 
-resource "kubernetes_manifest" "cluster_issuer" {
-  manifest = {
+resource "kubectl_manifest" "cluster_issuer" {
+  yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
     metadata = {
@@ -116,10 +116,10 @@ resource "kubernetes_manifest" "cluster_issuer" {
         }]
       }
     }
-  }
+  })
 
   depends_on = [
-    kubernetes_manifest.cloudflare_external_secret
+    kubectl_manifest.cloudflare_external_secret
   ]
 }
 
@@ -137,7 +137,6 @@ resource "helm_release" "nginx_controller" {
       "${var.values_file_path}/values-${var.env}.yaml",
       {
         subnets         = join(",", var.subnets)
-        acm_arn         = aws_acm_certificate.ingress_certificate.arn
         security_groups = join(",", var.security_groups)
       }
     )

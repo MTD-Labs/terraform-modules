@@ -50,12 +50,11 @@ resource "time_sleep" "wait_for_crds" {
 # SECRET STORE (AWS Secrets Manager)
 ########################################
 
-resource "kubernetes_manifest" "secret_store" {
-  provider = kubernetes
+resource "kubectl_manifest" "secret_store" {
 
   count = var.install_external_secrets && var.create_secret_store ? 1 : 0
 
-  manifest = {
+  yaml_body = yamlencode({
     apiVersion = "external-secrets.io/v1beta1"
     kind       = "SecretStore"
     metadata = {
@@ -77,7 +76,7 @@ resource "kubernetes_manifest" "secret_store" {
         }
       }
     }
-  }
+  })
 
   depends_on = [
     time_sleep.wait_for_crds
@@ -87,12 +86,11 @@ resource "kubernetes_manifest" "secret_store" {
 # CLUSTER SECRET STORE
 ########################################
 
-resource "kubernetes_manifest" "cluster_secret_store" {
-  provider = kubernetes
+resource "kubectl_manifest" "cluster_secret_store" {
 
   count = var.install_external_secrets && var.create_cluster_secret_store ? 1 : 0
 
-  manifest = {
+  yaml_body = yamlencode({
     apiVersion = "external-secrets.io/v1beta1"
     kind       = "ClusterSecretStore"
     metadata = {
@@ -114,7 +112,7 @@ resource "kubernetes_manifest" "cluster_secret_store" {
         }
       }
     }
-  }
+  })
 
   depends_on = [
     time_sleep.wait_for_crds
