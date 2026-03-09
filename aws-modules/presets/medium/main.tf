@@ -497,9 +497,6 @@ module "external_secrets" {
   create_cluster_secret_store = var.eks_create_cluster_secret_store
   cluster_secret_store_name   = var.eks_cluster_secret_store_name
 
-  depends_on = [
-    null_resource.wait_for_cluster
-  ]
 }
 
 module "ingress" {
@@ -529,10 +526,6 @@ module "ingress" {
   cluster_oidc_id  = module.eks[0].cluster_oidc_id
   vpc_id                  = module.vpc.vpc_id
   cluster_secret_store_name   = var.eks_cluster_secret_store_name
-
-  depends_on = [
-    module.external_secrets
-  ]
 }
 
 module "grafana" {

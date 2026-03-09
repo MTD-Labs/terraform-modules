@@ -7,6 +7,8 @@ data "archive_file" "nginx_controller_values" {
 
 resource "helm_release" "aws_lb_controller" {
   name       = "aws-load-balancer-controller"
+  count = var.eks_enabled ? 1 : 0
+
   namespace  = "kube-system"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
@@ -41,6 +43,7 @@ resource "helm_release" "aws_lb_controller" {
 
 resource "helm_release" "cert_manager" {
   name       = "cert-manager"
+  count = var.eks_enabled ? 1 : 0
   namespace  = "cert-manager"
   create_namespace = true
 
@@ -56,6 +59,7 @@ resource "helm_release" "cert_manager" {
 }
 
 resource "kubectl_manifest" "cloudflare_external_secret" {
+  count = var.eks_enabled ? 1 : 0
   yaml_body = yamlencode({
     apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
@@ -91,6 +95,7 @@ resource "kubectl_manifest" "cloudflare_external_secret" {
 }
 
 resource "kubectl_manifest" "cluster_issuer" {
+  count = var.eks_enabled ? 1 : 0
   yaml_body = yamlencode({
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
