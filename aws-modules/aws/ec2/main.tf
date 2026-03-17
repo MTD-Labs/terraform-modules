@@ -314,7 +314,7 @@ resource "null_resource" "grafana_compose_up" {
   provisioner "remote-exec" {
     inline = [
       # Optional: login to a registry if needed
-      # "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_user_id}.dkr.ecr.${var.region}.amazonaws.com",
+      "aws ecr get-login-password --region ${var.region} | docker login --username AWS --password-stdin ${var.ecr_user_id}.dkr.ecr.${var.region}.amazonaws.com",
 
       "cd /app/grafana && docker compose pull",
       "cd /app/grafana && docker compose up -d --remove-orphans"
