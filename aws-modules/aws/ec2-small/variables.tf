@@ -158,8 +158,8 @@ variable "ami_id" {
 
 variable "cloudflare_zone" {
   type        = string
-  description = "Root zone in Cloudflare (e.g., trendex.my)"
-  default     = "trendex.my"
+  description = "Root zone in Cloudflare (e.g., trendex.cloud)"
+  default     = "trendex.cloud"
 }
 
 variable "cloudflare_proxied" {
