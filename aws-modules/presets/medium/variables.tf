@@ -48,6 +48,18 @@ variable "single_nat_gateway" {
   description = "Should be true if you want to provision a single shared NAT Gateway across all of your private networks"
 }
 
+variable "create_ecs_vpc_endpoint" {
+  type        = bool
+  default     = true
+  description = "Create the ECS interface VPC endpoint. Only applies when ecs_enabled is true. Set to false to remove the endpoint without touching the ECS cluster."
+}
+
+variable "create_rds_vpc_endpoint" {
+  type        = bool
+  default     = true
+  description = "Create the RDS interface VPC endpoint. Only applies when postgres_enabled is true. Set to false to remove the endpoint without touching the Postgres database."
+}
+
 ### EC2 Bastion ###
 
 variable "bastion_enabled" {

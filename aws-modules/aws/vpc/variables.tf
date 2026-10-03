@@ -90,3 +90,15 @@ variable "ecs_enabled" {
   default     = false
   description = ""
 }
+
+variable "create_ecs_vpc_endpoint" {
+  type        = bool
+  default     = true
+  description = "Create the ECS interface VPC endpoint. Only applies when ecs_enabled is true. Set to false to remove the endpoint without touching the ECS cluster."
+}
+
+variable "create_rds_vpc_endpoint" {
+  type        = bool
+  default     = true
+  description = "Create the RDS interface VPC endpoint. Only applies when postgres_enabled is true. Set to false to remove the endpoint without touching the Postgres database."
+}

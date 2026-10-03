@@ -52,6 +52,9 @@ module "vpc" {
 
   ecs_enabled      = var.ecs_enabled
   postgres_enabled = var.postgres_enabled
+
+  create_ecs_vpc_endpoint = var.create_ecs_vpc_endpoint
+  create_rds_vpc_endpoint = var.create_rds_vpc_endpoint
 }
 
 module "alb" {

@@ -64,6 +64,7 @@ module "vpc_endpoints" {
     },
     var.ecs_enabled ? {
       ecs = {
+        create              = var.create_ecs_vpc_endpoint
         service             = "ecs"
         private_dns_enabled = true
         subnet_ids          = module.vpc.private_subnets
@@ -72,6 +73,7 @@ module "vpc_endpoints" {
     } : {},
     var.postgres_enabled ? {
       rds = {
+        create              = var.create_rds_vpc_endpoint
         service             = "rds"
         private_dns_enabled = true
         subnet_ids          = module.vpc.private_subnets
