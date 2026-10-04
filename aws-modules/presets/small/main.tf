@@ -42,6 +42,9 @@ module "alb" {
   lambda_security_group    = [module.ec2[0].security_group_id]
   ecs_enabled              = var.ecs_enabled
   create_cloudflare_record = var.create_cloudflare_record
+  # Pass the zone: without it the ALB module falls back to its default ("trendex.my") for every Cloudflare record it
+  # writes - the CDN certificate's validation record and the CDN name - whatever zone the environment sets.
+  cloudflare_zone = var.cloudflare_zone
 }
 
 module "vpc" {
